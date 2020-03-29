@@ -1,20 +1,22 @@
-browser.contextualIdentities.query({}).then((identities) => {
-	if (!identities.length) {
-		return;
-	}
-
-	for(let i = 1; i <= 4; i++) {
-		let valid = identities.filter( iden => iden.name.includes( i.toString() ) )
-		if( valid.length == 0) break;
-		valid = valid[0];
-
-		browser.commands.onCommand.addListener((command) => {
-			if(command.includes(i.toString())) {
-				browser.tabs.create({
-					url: "https://developer.mozilla.org",
-					cookieStoreId: valid.cookieStoreId
-				});	
-			}
+browser.commands.getAll().then( (commands) => {
+	commands.forEach( (command) => {
+		browser.storage.local.get(command.name + "_command").then((content) => {
+			browser.storage.local.set({ [command.name + "_command"]: command });
 		});
-	}
+		browser.storage.local.get(command.name + "_cookieStoreId").then((content) => {
+			browser.storage.local.set({ [command.name + "_cookieStoreId"]: "" });
+		});
+		browser.storage.local.get(command.name + "_pageHTML").then((content) => {
+			browser.storage.local.set({ [command.name + "_pageHTML"]: "" });
+		});
+	});
+});
+
+browser.commands.onCommand.addListener( (commName) => {
+	browser.storage.local.get( [commName + "_command", commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
+		browser.tabs.create({
+			url: "about:blank",
+			cookieStoreId: content[commName + "_cookieStoreId"]
+		});
+	});
 });
