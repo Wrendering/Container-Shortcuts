@@ -1,6 +1,5 @@
 var table = document.getElementById("displayTable");
 
-
 var updateCommandTable = async function() {
 
 	let selectHTML = "<option value=''>Default Tab</option>";
@@ -14,7 +13,7 @@ var updateCommandTable = async function() {
 	browser.commands.getAll().then( (commands) => {
 		commands.forEach( (command) => {
 			let commName = command.name;
-			browser.storage.local.get( [commName + "_command", commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
+			browser.storage.local.get( [ commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
 				let row = table.insertRow(table.length);
 				row.id = "row_" + commName ;
 
@@ -36,10 +35,15 @@ document.addEventListener('DOMContentLoaded', updateCommandTable);
 
 var updateShortcuts = async function() {
 	for(let i = 1, row; row = table.rows[i]; i++) {
-		browser.commands.update({
-			name: row.id.substring(4),
+		let commName = row.id.substring(4);
+		await browser.commands.update({
+			name: commName,
 			shortcut: row.cells[0].children[0].value
+		}).then( () => {
+			browser.storage.local.set({ [commName + "_cookieStoreId"]: row.cells[1].children[0].options[row.cells[1].children[0].selectedIndex].value });
+			browser.storage.local.set({ [commName + "_pageHTML"]: "" });
 		});
 	}
+	updateCommandTable();
 }
 document.getElementById('update').addEventListener('click', updateShortcuts);
