@@ -1,0 +1,64 @@
+{
+	"name": "Container Shortcuts",
+	"version": "1.0",
+	"manifest_version": 2,
+
+	"permissions": [
+		"contextualIdentities", 
+		"cookies",
+		"storage",
+		"unlimitedStorage"
+	],
+
+	"description": "Use ctrl-1, ctrl-2, ... to open the corresponding container tabs.",
+	"icons": {
+		"48": "icons/conttab-48.png"
+	},
+	"background": {
+		"scripts": ["background-script.js"]
+	},
+
+
+	"commands": {
+		"com1": {
+			"suggested_key": { "default": "Ctrl+1" },
+			"description": "Open the 'first' container"
+		},
+		"com2": {
+			"suggested_key": { "default": "Ctrl+2" },
+			"description": "Open the 'second' container"
+		},
+		"com3": {
+			"suggested_key": { "default": "Ctrl+3" },
+			"description": "Open the 'third' container"
+		},
+		"com4": {
+			"suggested_key": { "default": "Ctrl+4" },
+			"description": "Open the 'fourth' container"
+		},
+		"com5": {
+			"suggested_key": { "default": "Ctrl+5" },
+			"description": "Open the 'fifth' container"
+		},
+		"com6": {
+			"suggested_key": { "default": "Ctrl+6" },
+			"description": "Open the 'sixth' container"
+		},
+		"com7": {
+			"suggested_key": { "default": "Ctrl+7" },
+			"description": "Open the 'seventh' container"
+		},
+		"com8": {
+			"suggested_key": { "default": "Ctrl+8" },
+			"description": "Open the 'eighth' container"
+		},
+		"com9": {
+			"suggested_key": { "default": "Ctrl+9" },
+			"description": "Open the 'ninth' container"
+		},
+		"com0": {
+			"suggested_key": { "default": "Ctrl+0" },
+			"description": "Open the 'tenth' container"
+		}
+	}
+}
