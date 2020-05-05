@@ -1,3 +1,5 @@
+browser.storage.local.clear();
+
 browser.commands.getAll().then( (commands) => {
 	commands.forEach( (command) => {
 		browser.storage.local.get(command.name + "_cookieStoreId").then((content) => {
@@ -12,7 +14,7 @@ browser.commands.getAll().then( (commands) => {
 browser.commands.onCommand.addListener( (commName) => {
 	browser.storage.local.get( [commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
 		browser.tabs.create({
-			url: "about:blank",
+			url: "about:blank ",
 			cookieStoreId: content[commName + "_cookieStoreId"]
 		});
 	});
