@@ -7,9 +7,10 @@ browser.runtime.onMessage.addListener(yuh);
 var updateCommandTable = async function() {
 
 	let table = document.getElementById("displayTable");
-	table.innerHTML = "<tr><th>Shortcut</th><th>Container</th></tr>";
+	table = table.tBodies[0];
 
 	let indexMap = {} ;
+	let revIndexMap = {} ;
 	let selectHTML = "<option value=''>Default Tab</option>";
 	await browser.contextualIdentities.query({}).then( (identities) => {
 		let i = 1 ;
@@ -17,6 +18,7 @@ var updateCommandTable = async function() {
 			selectHTML += "<option value='" + ident.cookieStoreId + "' >" + ident.name + "</option>";
 			// + "<img src='" + ident.iconUrl + "' alt='" + ident.icon + "' style='height:1ex;' > "
 			indexMap[ident.cookieStoreId] = i ;
+			revIndexMap[i] = ident.cookieStoreId;
 			i += 1 ;
 		});
 	});
@@ -38,7 +40,21 @@ var updateCommandTable = async function() {
 				cell_cntnr.innerHTML = selectHTML;
 
 				cell_cntnr.children[0].selectedIndex = indexMap[ content[commName + "_cookieStoreId"] ] ;
-				cell_cntnr.children[0].onchange = function(){window.alert(this.value);};
+				cell_cntnr.children[0].onchange = async function(){
+					let row = this.parentElement.parentElement;
+					let rowI = row.rowIndex;
+					indexMap[revIndexMap[rowI]] = rowI;
+					revIndexMap[rowI] = this.value;
+
+					let commName = row.id.substring(4);
+					await browser.commands.update({
+						name: commName,
+						shortcut: row.cells[0].children[0].value
+					});
+					let temppp = {} ; temppp[commName + "_cookieStoreId"] = this.value ;
+					await browser.storage.local.set(temppp) ;
+					await browser.storage.local.set({ [commName + "_pageHTML"]: "" });
+				};
 			});
 		});
 	});
@@ -47,7 +63,7 @@ document.addEventListener('DOMContentLoaded', updateCommandTable);
 
 var updateShortcuts = async function(e) {
 	e.preventDefault();
-	let table = document.getElementById("displayTable");
+	/*let table = document.getElementById("displayTable").tBodies[0];
 
 	let rep = 0 ;
 	for(let i = 1, row; row = table.rows[i]; i++) {
