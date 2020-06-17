@@ -1,9 +1,3 @@
-/*var yuh = function(fdas) {
-	console.log("Message receieved: " + fdas);
-}
-browser.runtime.onMessage.addListener(yuh);
-*/
-
 var updateCommandTable = async function() {
 
 	let table = document.getElementById("displayTable");
@@ -60,41 +54,3 @@ var updateCommandTable = async function() {
 	});
 }
 document.addEventListener('DOMContentLoaded', updateCommandTable);
-
-var updateShortcuts = async function(e) {
-	e.preventDefault();
-	/*let table = document.getElementById("displayTable").tBodies[0];
-
-	let rep = 0 ;
-	for(let i = 1, row; row = table.rows[i]; i++) {
-		rep += 1 ;
-		let commName = row.id.substring(4);
-		await browser.commands.update({
-			name: commName,
-			shortcut: row.cells[0].children[0].value
-		});
-		//console.log("a1");
-		let temppp = {} ; temppp[commName + "_cookieStoreId"] = row.cells[1].children[0].options[row.cells[1].children[0].selectedIndex].value ;
-		await browser.storage.local.set(temppp) ;
-		//.then(() => {console.log("ok")}, (err) => {console.log("err: " + err)});
-		//console.log("a2");
-		await browser.storage.local.set({ [commName + "_pageHTML"]: "" });
-	}//*/
-	//await updateCommandTable();
-
-	//console.log("r: " + rep);
-}
-document.querySelector("form").addEventListener("submit", (e) => { updateShortcuts(e); } );
-
-/*
-document.getElementById('test').addEventListener('click', async function() {
-	console.log("*******");
-	console.log(">> Local storage:");
-	await browser.storage.local.get(null).then( (content) => { console.log(content) } );
-	console.log(">> Commands:");
-	await browser.commands.getAll().then( (content) => { console.log(content) } );
-	console.log(">> Stuff:");
-	await browser.storage.local.get(["com1" + "_cookieStoreId"]).then( (content) => { console.log(content) } );
-	console.log("*******\n");
-	browser.storage.local.clear();
-});*/
