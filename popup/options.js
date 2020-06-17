@@ -1,5 +1,10 @@
+/*var yuh = function(fdas) {
+	console.log("Message receieved: " + fdas);
+}
+browser.runtime.onMessage.addListener(yuh);
+*/
+
 var updateCommandTable = async function() {
-	//console.log("updateTable");
 
 	let table = document.getElementById("displayTable");
 	table.innerHTML = "<tr><th>Shortcut</th><th>Container</th></tr>";
@@ -33,6 +38,7 @@ var updateCommandTable = async function() {
 				cell_cntnr.innerHTML = selectHTML;
 
 				cell_cntnr.children[0].selectedIndex = indexMap[ content[commName + "_cookieStoreId"] ] ;
+				cell_cntnr.children[0].onchange = function(){window.alert(this.value);};
 			});
 		});
 	});

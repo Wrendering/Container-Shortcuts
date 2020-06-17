@@ -19,3 +19,18 @@ browser.commands.onCommand.addListener( (commName) => {
 		});
 	});
 });
+
+/*
+var jksldfjksldfjkls = setInterval(() => {
+	browser.runtime.sendMessage("jsdklfj");
+}, 1000);
+*/
+
+/*
+
+"options_ui": {
+	"page": "options.html",
+	"browser_style": true
+},
+
+*/
