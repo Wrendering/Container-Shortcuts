@@ -1,24 +1,65 @@
 var indexMap = {} ;
 var revIndexMap = {} ;
 
-var containerSelectResponse = async function() {
+var customMap = {}
+
+
+var shortcutSelectResponse = async function() {
 	let row = this.parentElement.parentElement;
 	let rowI = row.rowIndex;
-	indexMap[revIndexMap[rowI]] = rowI;
-	revIndexMap[rowI] = this.value;
-
 	let commName = row.id.substring(4);
+
 	await browser.commands.update({
 		name: commName,
 		shortcut: row.cells[0].children[0].value
 	});
-	let temppp = {} ; temppp[commName + "_cookieStoreId"] = this.value ;
-	await browser.storage.local.set(temppp) ;
-	await browser.storage.local.set({ [commName + "_pageHTML"]: "" });
 };
 
+var containerSelectResponse = async function() {
+	let row = this.parentElement.parentElement;
+	let rowI = row.rowIndex;
+	let commName = row.id.substring(4);
+
+	indexMap[revIndexMap[rowI]] = rowI;
+	revIndexMap[rowI] = this.value;
+
+	let temppp = {} ; temppp[commName + "_cookieStoreId"] = this.value ;
+	await browser.storage.local.set(temppp) ;
+};
+
+var targetSelectResponse = async function() {
+	let row = this.parentElement.parentElement;
+	let rowI = row.rowIndex;
+	let commName = row.id.substring(4);
+
+	let temppp = {} ; temppp[commName + "_pageHTML"] = this.value ;
+	await browser.storage.local.set(temppp) ;
+};
+
+var constructTargetHTML = async function() {
+	let targetHTML = "<option value='0'>Default (about:newtab)</option>";
+	targetHTML += "<option value='1'>Blank (about:blank)</option>";
+	targetHTML += "<option disabled>-Custom pages: &#9472;</option>";
+
+	await browser.storage.local.get( [ "custom_pages" ] ).then( (content) => {
+		content.foreach( (page) => {
+			targetHTML += `<option value='${page.selector}'>${page.title}</option>`;
+		});
+	});
+
+	targetHTML = "<select>" + targetHTML + "</select>";
+	return targetHTML;
+};
+
+/*
+let contentVal = commName + "_pageHTML";
+await browser.storage.local.get( [ contentVal ]).then((content) => {
+	content[contentVal]
+});
+*/
+
 var constructSelectHTML = async function() {
-	let selectHTML = "<option value=''>Default Tab</option>";
+	let selectHTML = "<option value=''>Default Container</option>";
 	await browser.contextualIdentities.query({}).then( (identities) => {
 		let i = 1 ;
 		identities.forEach( (ident) => {
@@ -32,7 +73,7 @@ var constructSelectHTML = async function() {
 	selectHTML = "<select>" + selectHTML + "</select>";
 
 	return selectHTML;
-}
+};
 
 var constructRow = function(newBody, selectHTML, command) {
 	let commName = command.name;
@@ -42,16 +83,30 @@ var constructRow = function(newBody, selectHTML, command) {
 
 		let cell_shrct = row.insertCell(0);
 		let cell_cntnr = row.insertCell(1);
+		let cell_targt = row.insertCell(2);
 
-		let cell_shrct_id = "shrct_cell_" + commName;
-		cell_shrct.innerHTML = "<input type='text' id='" + cell_shrct_id + "' value='" + command.shortcut + "' >";
-		let cell_cntnr_id = "cntnr_cell_" + commName;
+		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + command.shortcut + "' >";
 		cell_cntnr.innerHTML = selectHTML;
+		cell_cntnr.id = "cntnr_cell_" + commName;
+		cell_targt.innerHTML = targetHTML;
+		cell_targt.id = "targt_cell_" + commName;
+
 
 		cell_cntnr.children[0].selectedIndex = indexMap[ content[commName + "_cookieStoreId"] ] ;
+
+		let cellt = cell_targt.children[0];	// god i hate <select>
+		for(let i = 0; i < cellt.options.length; ++i) {
+			if(cellt.options[i].value === content[commName + "_pageHTML"]) {
+				cellt.selectedIndex = i;
+				break;
+			}
+		}
+
+		cell_shrct.children[0].onchange = shortcutSelectResponse;
 		cell_cntnr.children[0].onchange = containerSelectResponse;
+		cell_targt.children[0].onchange = targetSelectResponse;
 	});
-}
+};
 
 var updateCommandTable = async function() {
 
