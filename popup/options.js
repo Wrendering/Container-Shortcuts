@@ -42,7 +42,7 @@ var constructTargetHTML = async function() {
 	targetHTML += "<option disabled>-Custom pages: &#9472;</option>";
 
 	await browser.storage.local.get( [ "custom_pages" ] ).then( (content) => {
-		content.foreach( (page) => {
+		content["custom_pages"].forEach( (page) => {
 			targetHTML += `<option value='${page.selector}'>${page.title}</option>`;
 		});
 	});
@@ -75,7 +75,7 @@ var constructSelectHTML = async function() {
 	return selectHTML;
 };
 
-var constructRow = function(newBody, selectHTML, command) {
+var constructRow = function(newBody, selectHTML, targetHTML, command) {
 	let commName = command.name;
 	browser.storage.local.get( [ commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
 		let row = newBody.insertRow(newBody.length);
@@ -115,9 +115,10 @@ var updateCommandTable = async function() {
 	newBody = document.createElement('tbody');
 
 	let selectHTML = await constructSelectHTML();
+	let targetHTML = await constructTargetHTML();
 
 	browser.commands.getAll().then( (commands) => {
-		commands.forEach( (command) => { constructRow(newBody, selectHTML, command); } );
+		commands.forEach( (command) => { constructRow(newBody, selectHTML, targetHTML, command); } );
 	});
 
 	table.parentNode.replaceChild(newBody, table);
