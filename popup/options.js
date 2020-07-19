@@ -36,18 +36,24 @@ var targetSelectResponse = async function() {
 	await browser.storage.local.set(temppp) ;
 };
 
-var constructTargetHTML = async function() {
-	let targetHTML = "<option value='0'>Default (about:newtab)</option>";
-	targetHTML += "<option value='1'>Blank (about:blank)</option>";
-	targetHTML += "<option disabled>-Custom pages: &#9472;</option>";
-
-	await browser.storage.local.get( [ "custom_pages" ] ).then( (content) => {
-		content["custom_pages"].forEach( (page) => {
+var constructEmptyTargetHTML = async function(targetHTML) {
+	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+		content = JSON.parse(custom_pages["custom_pages"] || "[]");
+		content.forEach( (page) => {
 			targetHTML += `<option value='${page.selector}'>${page.title}</option>`;
 		});
 	});
 
 	targetHTML = "<select>" + targetHTML + "</select>";
+	return targetHTML;
+};
+
+var constructTargetHTML = async function() {
+	let targetHTML = "<option value='0'>Default (about:newtab)</option>";
+	targetHTML += "<option value='1'>Blank (about:blank)</option>";
+	targetHTML += "<option disabled>-Custom pages: &#9472;</option>";
+
+	targetHTML = constructEmptyTargetHTML(targetHTML);
 	return targetHTML;
 };
 
@@ -128,3 +134,85 @@ document.addEventListener('DOMContentLoaded', updateCommandTable);
 browser.runtime.onMessage.addListener(async (message) => {
 	updateCommandTable();
 });
+
+
+
+
+
+
+
+
+var removeSubmitResponse = async function(e) {
+	e.preventDefault();
+
+	rs = document.getElementById("remove_select");
+	if( ! rs.value) return;
+
+	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+		content = JSON.parse(custom_pages["custom_pages"] || "[]");
+
+		let i = 0;
+		for( ; i < content.length; ++i) {
+			if(content[i].selector === rs.value) break;
+		}
+
+		// god this is ugly and inefficient
+		await browser.commands.getAll().then( (commands) => {
+			// could get from the table iterator? ugh even worse. or just 1 to 10?
+			commands.forEach( (command) => {
+				let commName = command.name;
+				await browser.storage.local.get( [ commName + "_pageHTML" ]).then((conn) => {
+					 if( conn[commName + "_pageHTML"] === content[i].selector ) {
+						 await browser.storage.local.set( { [ commName + "_pageHTML" ] : "" } );
+							 // need to batch these promises
+					 }
+				});
+			});
+		});
+
+
+		content.splice(i, 1);
+		await browser.storage.local.set( { "custom_pages" : JSON.stringify(content) } );
+	});
+
+	await updateCustomOptions();
+};
+document.getElementById("remove_form").addEventListener("submit", removeSubmitResponse);
+
+
+
+var addSubmitResponse = async function(e) {
+	e.preventDefault();
+
+	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+		content = JSON.parse(custom_pages["custom_pages"] || "[]");
+
+		// can, technically, overflow someday
+		let rs = document.getElementById("remove_select");
+		let max = -1;
+		for(let i = 0; i < rs.length; ++i) {
+			let comp = rs.options[i].value;
+			max = max < comp ? comp ; max;
+		}
+		max = max + 1;
+
+		newObject = {
+			selector : max,
+			title : document.getElementById("add_title").value,
+			content : document.getElementById("add_content").value
+		};
+
+		content.push(newObject);
+		await browser.storage.local.set( { "custom_pages" : JSON.stringify(content) } );
+
+	});
+	await updateCustomOptions();
+};
+document.getElementById("add_form").addEventListener("submit", addSubmitResponse);
+
+
+var updateCustomOptions = async function() {
+	document.getElementById("remove_select").innerHTML = constructEmptyTargetHTML();
+
+};
+document.addEventListener('DOMContentLoaded', updateCustomOptions);
