@@ -51,8 +51,8 @@ var constructEmptyTargetInnerHTML = async function(targetHTML) {
 };
 
 var constructTargetHTML = async function() {
-	let targetHTML = "<option value='0'>Default (about:newtab)</option>";
-	targetHTML += "<option value='1'>Blank (about:blank)</option>";
+	let targetHTML = "<option value='-1'>Default (about:newtab)</option>";
+	targetHTML += "<option value='-2'>Blank (about:blank)</option>";
 	targetHTML += "<option disabled>-Custom pages: &#9472;</option>";
 
 	targetHTML = await constructEmptyTargetInnerHTML(targetHTML);
@@ -185,7 +185,7 @@ var removeSubmitResponse = async function(e) {
 	}).then( () => {
 		let i = 0;
 		updateTargetOptions( (select) => {
-			if(select.children[i].value != rs.value) {
+			if(select.children[i].value !== rs.value) {
 				for( i = 0; i < select.children.length; ++i) {
 					if(select.children[i].value == rs.value) {
 						break;
@@ -205,26 +205,72 @@ var removeSubmitResponse = async function(e) {
 document.getElementById("remove_form").addEventListener("submit", removeSubmitResponse);
 
 
+var clearTitleError = function() {
+	const ate = document.getElementById("add_title_error");
+	ate.innerHTML = '';
+	ate.className = 'error';
+};
+document.getElementById("add_title").addEventListener("input", clearTitleError);
+
+var clearContentError = function() {
+	const ace = document.getElementById("add_content_error");
+	ace.innerHTML = '';
+	ace.className = 'error';
+};
+document.getElementById("add_content").addEventListener("input", clearContentError);
 
 var addSubmitResponse = async function(e) {
 	e.preventDefault();
+
+	const add_title = document.getElementById("add_title");
+	const add_content = document.getElementById("add_content");
+	const rs = document.getElementById("remove_select");
+	const ate = document.getElementById("add_title_error");
+	const ace = document.getElementById("add_content_error");
+
+
+	// https://developer.mozilla.org/en-US/docs/Learn/Forms/Form_validation
+	if(add_title.value === "") {
+		ate.textContent = 'A title is required';
+		ate.className = 'error active';
+		return;
+	}
+
+	if(add_content.value === "") {
+		ace.textContent = 'Page content must not be empty';
+		ace.className = 'error active';
+		return;
+	}
+
+	for( let i = 0; i < rs.children.length; ++i) {
+		if(! rs.options[i].disabled) {
+			if(rs.options[i].innerText === add_title.value) {
+				ate.textContent = 'Titles must be unique';
+				ate.className = 'error active';
+				return;
+			}
+		}
+	}
+
+	clearTitleError();
+	clearContentError();
 
 	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
 		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
 
 		// can, technically, overflow someday
-		let rs = document.getElementById("remove_select");
 		let max = -1;
 		for(let i = 0; i < rs.length; ++i) {
-			let comp = rs.options[i].value;
+			if(rs.options[i].disabled) continue;
+			let comp = parseInt(rs.options[i].value);
 			max = max < comp ? comp : max;
 		}
 		max = max + 1;
 
 		let newObject = {
 			selector : max,
-			title : document.getElementById("add_title").value,
-			content : document.getElementById("add_content").value
+			title : add_title.value,
+			content : add_content.value
 		};
 
 		content.push(newObject);
@@ -237,6 +283,10 @@ var addSubmitResponse = async function(e) {
 			updateTargetOptions( (select) => {
 				select.appendChild(newChild.cloneNode(true));
 			});
+
+
+			add_title.value = "";
+			add_content.value = "";
 		});
 	}).catch( (e) => {
 		console.log("Something went wrong: <addSubmitResponse> : " + e);

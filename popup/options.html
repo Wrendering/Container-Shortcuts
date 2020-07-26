@@ -22,12 +22,14 @@
 				<select id="remove_select"></select>
 			</form> <br>
 			--------<br>
-			<form id="add_form">
+			<form id="add_form" novalidate>
 				<input type="submit" id="add_submit" value="Add Custom Page"></input><br>
 				Title:<br>
 				<input type="text" id="add_title"></input><br>
+				<span class="error" aria-live="polite" id="add_title_error"></span><br>
 				Content:<br>
-				<textarea id="add_content" rows="6"></textarea>
+				<textarea id="add_content" rows="6"></textarea><br>
+				<span class="error" aria-live="polite" id="add_content_error"></span>
 			</form>
 		</div>
 
