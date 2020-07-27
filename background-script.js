@@ -15,17 +15,53 @@ browser.commands.getAll().then( (commands) => {
 
 browser.commands.onCommand.addListener( (commName) => {
 	browser.storage.local.get( [commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
-		browser.tabs.create({
-			url: "about:blank ",
-			cookieStoreId: content[commName + "_cookieStoreId"]
-		}).catch((err) => {
+		let page_html = content[commName + "_pageHTML"];
+		let cookieStoreId = content[commName + "_cookieStoreId"];
+
+		// for some reason, about:newtab is too privileged and you need "" instead.
+		tab_specs = {};
+		tab_specs.cookieStoreId = cookieStoreId;
+		if( ! ( page_html === "" || page_html === (-1).toString() )) {
+			if(page_html === (-2).toString() ) {
+				tab_specs.url = "about:blank";
+			} else {
+				tab_specs.url = "destination-page.html";
+			}
+		}
+
+		let tab = browser.tabs.create(tab_specs).catch((err) => {
+			console.log("Error opening tab: " + err);
 			if(err.message.includes("No cookie store exists with ID")) {
-				browser.tabs.create({
-					url: "about:blank "
-				});
+				delete tab_specs.cookieStoreId;
+				browser.tabs.create(tab_specs);
 				return;
 			}
 		});
+
+		if(tab_specs.url === "destination-page.html") {
+			Promise.all([ tab,
+				browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+					return JSON.parse(custom_pages["custom_pages"] || "[]");
+				}) ])
+			.then( (results) => {
+				let i = 0;
+				for(; i < results[1].length; ++i) {
+					if(results[1][i].selector.toString() === page_html) break;
+				}
+				if(i >= results[1].length) {
+					console.log("No page exists with that selector");
+					return;
+				}
+
+				return browser.tabs.executeScript(results[0].id, {
+					code: `document.body.innerHTML = \`${results[1][i].content}\`;`
+				}).catch( (err) => {
+					return browser.tabs.executeScript(results[0].id, {
+						code: `document.body.innerHTML = \`Sorry, the HTML code you provided gave an error:<br>"${err}"<br>\` + document.body.innerHTML;`
+					});
+				});
+			});
+		}
 	});
 });
 

@@ -167,37 +167,41 @@ var removeSubmitResponse = async function(e) {
 		if(i >= content.length) { console.log("WTF"); throw -69; }
 
 		// god this is ugly and inefficient
-		let promises = [];
+		let get_promises = [];
 		commands.forEach( (command) => {
 			let commName = command.name;
-			promises.push( browser.storage.local.get( [ commName + "_pageHTML" ]).then((conn) => {
+			get_promises.push( browser.storage.local.get( [ commName + "_pageHTML" ]).then((conn) => {
 				 if( conn[commName + "_pageHTML"] === content[i].selector ) {
-					  browser.storage.local.set( { [ commName + "_pageHTML" ] : "" } );
+					  return browser.storage.local.set( { [ commName + "_pageHTML" ] : "" } );
 				 }
 			}) );
 		});
 
-		return Promise.all(promises).then( () => {
+		return Promise.all(get_promises).then( () => {
 			content.splice(i, 1);
-			promises.push( browser.storage.local.set({ "custom_pages" : JSON.stringify(content) }) );
+			return browser.storage.local.set({ "custom_pages" : JSON.stringify(content) }) ;
 		} );
 
 	}).then( () => {
+		let update_promises = [];
 		let i = 0;
 		updateTargetOptions( (select) => {
-			if(select.children[i].value !== rs.value) {
-				for( i = 0; i < select.children.length; ++i) {
-					if(select.children[i].value == rs.value) {
+			if(select.options[i].value !== rs.value) {
+				for( i = 0; i < select.options.length; ++i) {
+					if(select.options[i].value == rs.value) {
 						break;
 					}
 				}
 			}
-			if(i >= select.children) { console.log("WTF"); throw -69; }
+			if(i >= select.options) { console.log("WTF"); throw -69; }
 
-			select.remove(select.children[i].index);
+			select.remove(select.options[i].index);
+			update_promises.push( (targetSelectResponse.call(select)) );
 		});
 
 		rs.remove(rs.selectedIndex);
+
+		return Promise.all(update_promises);
 	}).catch( (e) => {
 		console.log("Something went wrong: <removeSubmitResponse> : " + e);
 	});
@@ -259,13 +263,15 @@ var addSubmitResponse = async function(e) {
 		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
 
 		// can, technically, overflow someday
-		let max = -1;
+		let max = 19;
 		for(let i = 0; i < rs.length; ++i) {
 			if(rs.options[i].disabled) continue;
 			let comp = parseInt(rs.options[i].value);
 			max = max < comp ? comp : max;
 		}
 		max = max + 1;
+
+		add_content.value = add_content.value.replace("`", "\\`").replace("${", "\\${");
 
 		let newObject = {
 			selector : max,
