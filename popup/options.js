@@ -240,12 +240,6 @@ var addSubmitResponse = async function(e) {
 		return;
 	}
 
-	if(add_content.value === "") {
-		ace.textContent = 'Page content must not be empty';
-		ace.className = 'error active';
-		return;
-	}
-
 	for( let i = 0; i < rs.children.length; ++i) {
 		if(! rs.options[i].disabled) {
 			if(rs.options[i].innerText === add_title.value) {
@@ -257,7 +251,6 @@ var addSubmitResponse = async function(e) {
 	}
 
 	clearTitleError();
-	clearContentError();
 
 	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
 		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
@@ -271,12 +264,10 @@ var addSubmitResponse = async function(e) {
 		}
 		max = max + 1;
 
-		add_content.value = add_content.value.replace("`", "\\`").replace("${", "\\${");
-
 		let newObject = {
 			selector : max,
 			title : add_title.value,
-			content : add_content.value
+			content : add_content.value.replace("`", "\\`").replace("${", "\\${");
 		};
 
 		content.push(newObject);
@@ -299,6 +290,69 @@ var addSubmitResponse = async function(e) {
 	});
 };
 document.getElementById("add_form").addEventListener("submit", addSubmitResponse);
+
+
+
+
+
+var DefaultTextContainer = function( id, propName ) {
+
+	this.relevantElement = document.getElementById(id);
+
+	// Anything that can modify the content needs a listener below
+
+	this.eCR_i = -1;	// current index, so we short-circuit the loop when called repeatedly
+	this.eCR_content = null;
+
+	this.editContentResponse = async function() {
+		// careful with how long this may take... make async somehow, if possible?
+		eCR_content[eCR_i].content = add_content.value;
+	};
+	this.relevantElement.addEventListener("input", this.editContentResponse);
+
+
+	this.storeContentResponse = async function() {
+		eCR_content[eCR_i][propName] = add_content.value.replace("`", "\\`").replace("${", "\\${");
+
+		return browser.storage.local.set( { "custom_pages" : JSON.stringify(eCR_content) } );
+	}
+	window.addEventListener("unload", this.storeContentResponse);
+	this.relevantElement.addEventListener("change", this.storeContentResponse);
+	// TODO: add one for whenever the relevant command is run,
+	//  just in case the panels' open, that'll override the bkg script
+
+
+	this.updateContentResponse = async function() {
+		if(eCR_i === -1 || eCR_content[eCR_i].selector.toString() !== page_select.value) {
+			for( eCR_i = 0 ; eCR_i < content.length; ++eCR_i) {
+				if(eCR_content[eCR_i].selector.toString() === page_select.value ) break;
+			}
+			if(eCR_i >= content.length) { console.log("WTF"); throw -69; }
+		}
+
+		await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+			eCR_content = JSON.parse(custom_pages["custom_pages"] || "[]");
+		}
+	}
+	document.getElementById("page_select").addEventListener("change", this.updateContentResponse);
+	document.addEventListener('DOMContentLoaded', this.updateContentResponse);
+	// any others? probably tab change
+
+};
+
+
+
+// ** depends on tabbing impl
+var page_select_element = document.getElementById("page_select");
+var page_content_element = document.getElementById("page_content");
+var page_title_element = document.getElementById("page_title");
+
+var page_select = new DefaultTextContainer("page_content", "content");
+var page_title = new DefaultTextContainer("page_title", "title");
+page_title
+
+
+
 
 
 document.addEventListener('DOMContentLoaded', async () => {
