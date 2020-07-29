@@ -13,7 +13,35 @@ browser.commands.getAll().then( (commands) => {
 	});
 });
 
+
+
+
+var currentlyOpen = false;	// is there a more elegant way to do this?
+browser.runtime.onMessage.addListener(async (message) => {
+
+	if(message == "open") {
+		currentlyOpen = true;
+	} else if(message == "close") {
+		currentlyOpen = false;
+
+	} else if(message == "commandResponse") {
+		commandHandle(currentCommand);	//hoisting!
+	}
+});
+
+var currentCommand = null; // for the interim b/t telling popup to update and calling
 browser.commands.onCommand.addListener( (commName) => {
+	currentCommand = commName;
+	if(currentlyOpen) {
+		browser.runtime.sendMessage("commandQuery" + commName).catch(err => {
+			console.log("ERROR: Popup is listed as open, but can't be messaged: " + err);
+		});
+		return;	// wait for message from popup, the "all clear"
+	}
+	commandHandle(commName);
+});
+
+var commandHandle = function(commName) {
 	browser.storage.local.get( [commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
 		let page_html = content[commName + "_pageHTML"];
 		let cookieStoreId = content[commName + "_cookieStoreId"];
@@ -63,7 +91,8 @@ browser.commands.onCommand.addListener( (commName) => {
 			});
 		}
 	});
-});
+};
+
 
 
 browser.contextualIdentities.onCreated.addListener( async (item) => {

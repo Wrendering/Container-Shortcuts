@@ -131,10 +131,10 @@ var updateCommandTable = async function() {
 }
 
 browser.runtime.onMessage.addListener(async (message) => {
-	updateCommandTable();
+	if(message === "onRemoved") {
+		updateCommandTable();
+	}
 });
-
-
 
 
 
@@ -168,7 +168,7 @@ var removeSubmitResponse = async function(e) {
 
 		// god this is ugly and inefficient
 		let get_promises = [];
-		commands.forEach( (command) => {
+		commands.forEach( (command) => {	// TODO: These are in the row ids
 			let commName = command.name;
 			get_promises.push( browser.storage.local.get( [ commName + "_pageHTML" ]).then((conn) => {
 				 if( conn[commName + "_pageHTML"] === content[i].selector ) {
@@ -291,6 +291,16 @@ var addSubmitResponse = async function(e) {
 };
 document.getElementById("add_form").addEventListener("submit", addSubmitResponse);
 
+document.addEventListener('DOMContentLoaded', async () => {
+	updateCommandTable();
+	document.getElementById("remove_select").innerHTML = await constructEmptyTargetInnerHTML();
+});
+
+
+
+
+
+
 
 
 
@@ -304,23 +314,11 @@ var DefaultTextContainer = function( id, propName ) {
 	this.eCR_i = -1;	// current index, so we short-circuit the loop when called repeatedly
 	this.eCR_content = null;
 
-	this.editContentResponse = async function() {
-		// careful with how long this may take... make async somehow, if possible?
-		eCR_content[eCR_i].content = add_content.value;
-	};
-	this.relevantElement.addEventListener("input", this.editContentResponse);
-
-
 	this.storeContentResponse = async function() {
 		eCR_content[eCR_i][propName] = add_content.value.replace("`", "\\`").replace("${", "\\${");
 
 		return browser.storage.local.set( { "custom_pages" : JSON.stringify(eCR_content) } );
 	}
-	window.addEventListener("unload", this.storeContentResponse);
-	this.relevantElement.addEventListener("change", this.storeContentResponse);
-	// TODO: add one for whenever the relevant command is run,
-	//  just in case the panels' open, that'll override the bkg script
-
 
 	this.updateContentResponse = async function() {
 		if(eCR_i === -1 || eCR_content[eCR_i].selector.toString() !== page_select.value) {
@@ -334,9 +332,18 @@ var DefaultTextContainer = function( id, propName ) {
 			eCR_content = JSON.parse(custom_pages["custom_pages"] || "[]");
 		}
 	}
-	document.getElementById("page_select").addEventListener("change", this.updateContentResponse);
+
+
 	document.addEventListener('DOMContentLoaded', this.updateContentResponse);
+
+	this.relevantElement.addEventListener("change", this.storeContentResponse);
+	window.addEventListener("unload", this.storeContentResponse);
+	this.addEventListener("commandQuery", this.storeContentResponse);
+
+	document.getElementById("page_select").addEventListener("change",
+		this.storeContentResponse.then(this.updateContentResponse));
 	// any others? probably tab change
+
 
 };
 
@@ -347,15 +354,26 @@ var page_select_element = document.getElementById("page_select");
 var page_content_element = document.getElementById("page_content");
 var page_title_element = document.getElementById("page_title");
 
-var page_select = new DefaultTextContainer("page_content", "content");
+var page_content = new DefaultTextContainer("page_content", "content");
 var page_title = new DefaultTextContainer("page_title", "title");
-page_title
+page_title. // handle all the updating <select>s
 
 
+var commandQueryEvent = ("commandQuery", { detail: {} });
 
+browser.runtime.onMessage.addListener(async (message) => {
+	if(message.substring(0, 12) == "commandQuery") {
+		// Check if the command in question is the one currently being edited
+		if(document.getElementById("row_" + message.substring(12)).cells[2].children[0].value == page_select_element.value) {
+			// HANDLE ALL the relevant things that may need saving
+			// could probably check only if currently selected, either by saving or checking selected status, but eh
+			// TODO: Either make async, or test to show self this is pointless optimization
+			page_content.dispatchEvent(commandQueryEvent);
+			page_title.dispatchEvent(commandQueryEvent);
+		}
 
-
-document.addEventListener('DOMContentLoaded', async () => {
-	updateCommandTable();
-	document.getElementById("remove_select").innerHTML = await constructEmptyTargetInnerHTML();
+		browser.runtime.sendMessage("commandResponse").catch(err => {
+			console.log("ERROR: Popup was told about command, but bkg won't accept response: " + err);
+		});
+	}
 });
