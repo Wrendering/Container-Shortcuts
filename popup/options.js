@@ -38,6 +38,14 @@ var targetSelectResponse = async function() {
 	await browser.storage.local.set(temppp) ;
 };
 
+var findTargetOptions = async function(callback) {
+	let table = document.getElementById("displayTable");
+	table = table.tBodies[0];
+	for(let i = 0; i < table.rows.length; ++i) {
+		callback(table.rows[i].cells[2].children[0]);
+	}
+};
+
 var constructEmptyTargetInnerHTML = async function(targetHTML) {
 	if(typeof targetHTML == "undefined") targetHTML = "";
 	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
@@ -137,21 +145,13 @@ browser.runtime.onMessage.addListener(async (message) => {
 });
 
 
+//---------------------------------------------------------------------------
 
-
-var updateTargetOptions = async function(callback) {
-	let table = document.getElementById("displayTable");
-	table = table.tBodies[0];
-	for(let i = 0; i < table.rows.length; ++i) {
-		callback(table.rows[i].cells[2].children[0]);
-	}
-};
 
 var removeSubmitResponse = async function(e) {
 	e.preventDefault();
 
-	const rs = document.getElementById("remove_select");
-	if( ! rs.value) return;
+	if( ! page_select.value) return;
 
 	const promise_custom = browser.storage.local.get( [ "custom_pages" ] );
 	const promise_commands = browser.commands.getAll();
@@ -162,7 +162,7 @@ var removeSubmitResponse = async function(e) {
 
 		let i = 0;
 		for( ; i < content.length; ++i) {
-			if(content[i].selector.toString() === rs.value ) break;
+			if(content[i].selector.toString() === page_select.value ) break;
 		}
 		if(i >= content.length) { console.log("WTF"); throw -69; }
 
@@ -185,10 +185,10 @@ var removeSubmitResponse = async function(e) {
 	}).then( () => {
 		let update_promises = [];
 		let i = 0;
-		updateTargetOptions( (select) => {
-			if(select.options[i].value !== rs.value) {
+		findTargetOptions( (select) => {
+			if(select.options[i].value !== page_select.value) {
 				for( i = 0; i < select.options.length; ++i) {
-					if(select.options[i].value == rs.value) {
+					if(select.options[i].value == page_select.value) {
 						break;
 					}
 				}
@@ -199,7 +199,7 @@ var removeSubmitResponse = async function(e) {
 			update_promises.push( (targetSelectResponse.call(select)) );
 		});
 
-		rs.remove(rs.selectedIndex);
+		page_select.remove(page_select.selectedIndex);
 
 		return Promise.all(update_promises);
 	}).catch( (e) => {
@@ -209,48 +209,9 @@ var removeSubmitResponse = async function(e) {
 document.getElementById("remove_form").addEventListener("submit", removeSubmitResponse);
 
 
-var clearTitleError = function() {
-	const ate = document.getElementById("add_title_error");
-	ate.innerHTML = '';
-	ate.className = 'error';
-};
-document.getElementById("add_title").addEventListener("input", clearTitleError);
-
-var clearContentError = function() {
-	const ace = document.getElementById("add_content_error");
-	ace.innerHTML = '';
-	ace.className = 'error';
-};
-document.getElementById("add_content").addEventListener("input", clearContentError);
 
 var addSubmitResponse = async function(e) {
 	e.preventDefault();
-
-	const add_title = document.getElementById("add_title");
-	const add_content = document.getElementById("add_content");
-	const rs = document.getElementById("remove_select");
-	const ate = document.getElementById("add_title_error");
-	const ace = document.getElementById("add_content_error");
-
-
-	// https://developer.mozilla.org/en-US/docs/Learn/Forms/Form_validation
-	if(add_title.value === "") {
-		ate.textContent = 'A title is required';
-		ate.className = 'error active';
-		return;
-	}
-
-	for( let i = 0; i < rs.children.length; ++i) {
-		if(! rs.options[i].disabled) {
-			if(rs.options[i].innerText === add_title.value) {
-				ate.textContent = 'Titles must be unique';
-				ate.className = 'error active';
-				return;
-			}
-		}
-	}
-
-	clearTitleError();
 
 	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
 		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
@@ -258,16 +219,16 @@ var addSubmitResponse = async function(e) {
 		// can, technically, overflow someday
 		let max = 19;
 		for(let i = 0; i < rs.length; ++i) {
-			if(rs.options[i].disabled) continue;
-			let comp = parseInt(rs.options[i].value);
+			if(page_select.options[i].disabled) continue;
+			let comp = parseInt(page_select.options[i].value);
 			max = max < comp ? comp : max;
 		}
 		max = max + 1;
 
 		let newObject = {
 			selector : max,
-			title : add_title.value,
-			content : add_content.value.replace("`", "\\`").replace("${", "\\${");
+			title : "New Page(" + max + ")";
+			content : ""
 		};
 
 		content.push(newObject);
@@ -277,13 +238,13 @@ var addSubmitResponse = async function(e) {
 			newChild.innerHTML = newObject.title;
 			document.getElementById("remove_select").appendChild(newChild);
 
-			updateTargetOptions( (select) => {
+			findTargetOptions( (select) => {
 				select.appendChild(newChild.cloneNode(true));
 			});
 
 
-			add_title.value = "";
-			add_content.value = "";
+			page_title_element.value = "";
+			page_content_element.value = "";
 		});
 	}).catch( (e) => {
 		console.log("Something went wrong: <addSubmitResponse> : " + e);
@@ -293,19 +254,13 @@ document.getElementById("add_form").addEventListener("submit", addSubmitResponse
 
 document.addEventListener('DOMContentLoaded', async () => {
 	updateCommandTable();
-	document.getElementById("remove_select").innerHTML = await constructEmptyTargetInnerHTML();
+	page_select.innerHTML = await constructEmptyTargetInnerHTML();
 });
 
+//---------------------------------------------------------------------------
 
 
-
-
-
-
-
-
-
-var DefaultTextContainer = function( id, propName ) {
+var DefaultTextContainer = function( id, propName, errorElementId ) {
 
 	this.relevantElement = document.getElementById(id);
 
@@ -313,12 +268,14 @@ var DefaultTextContainer = function( id, propName ) {
 
 	this.eCR_i = -1;	// current index, so we short-circuit the loop when called repeatedly
 	this.eCR_content = null;
+	this.getContentStore = () => { return eCR_content[eCR_i][propName]; };
+	this.setContentStore = (value) => { eCR_content[eCR_i][propName] = value; };
 
 	this.storeContentResponse = async function() {
-		eCR_content[eCR_i][propName] = add_content.value.replace("`", "\\`").replace("${", "\\${");
+		this.setContentStore(this.relevantElement.value.replace("`", "\\`").replace("${", "\\${") );
 
 		return browser.storage.local.set( { "custom_pages" : JSON.stringify(eCR_content) } );
-	}
+	};
 
 	this.updateContentResponse = async function() {
 		if(eCR_i === -1 || eCR_content[eCR_i].selector.toString() !== page_select.value) {
@@ -331,7 +288,7 @@ var DefaultTextContainer = function( id, propName ) {
 		await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
 			eCR_content = JSON.parse(custom_pages["custom_pages"] || "[]");
 		}
-	}
+	};
 
 
 	document.addEventListener('DOMContentLoaded', this.updateContentResponse);
@@ -345,18 +302,94 @@ var DefaultTextContainer = function( id, propName ) {
 	// any others? probably tab change
 
 
+
+	this.errorElement = document.getElementById(errorElementId);
+	this.errored = false;
+	this.addError = function(message) {
+		this.errored = true;
+		this.errorElement.textContent = message;
+		this.errorElement.className = 'error active';
+	};
+	this.clearError = function() {
+		if(this.errored) {
+			this.errored = false;
+			this.errorElement.innerHTML = '';
+			this.errorElement.className = 'error';
+		}
+	};
+	this.relevantElement.addListener("input", this.clearError);
+
 };
+
+
+var ContentTextContainer = function( id, propName, errorElementId) {
+	DefaultTextContainer.call(this, id, propName, errorElementId);
+};
+ContentTextContainer.prototype = Object.create(DefaultTextContainer.prototype);
+ContentTextContainer.prototype.constructor = ContentTextContainer;
+
+
+var TitleTextContainer = function( id, propName, errorElementId) {
+	DefaultTextContainer.call(this, id, propName, errorElementId);
+
+	this.storeContentResponse = async function() {
+
+		// https://developer.mozilla.org/en-US/docs/Learn/Forms/Form_validation
+		if(add_title.value === "") {
+			this.addError('A title is required');
+			this.relevantElement.innerHTML = this.getContentStore();
+			return;
+		}
+
+		for( let i = 0; i < rs.children.length; ++i) {
+			if(! rs.options[i].disabled && rs.options[i].innerText === add_title.value) {
+				this.addError('Titles must be unique');
+				this.relevantElement.innerHTML = this.getContentStore();
+				return;
+			}
+		}
+
+		this.updateTargetOptions( (select, option_index) => {
+			select.options[option_index].innerText = this.relevantElement.value;
+		});
+
+		return TitleTextContainer.prototype.storeContentResponse.call(this);
+	};
+
+
+	// utility methods
+	this.updateTargetOptions(callback) = function(callback) {
+		findTargetOptions( (select) => {	// defined in 1st section
+			callback(select, this.getTargetIndex(select));
+		});
+	};
+	this.uTO_i = 0;
+	this.getTargetIndex = function(select) {
+		if(select.options[uTO_i].value !== rs.value) {
+			for( uTO_i = 0; uTO_i < select.options.length; ++uTO_i) {
+				if(select.options[uTO_i].value == rs.value) break;
+			}
+		}
+		if(uTO_i >= select.options) { console.log("WTF"); throw -69; }
+	};
+
+};
+TitleTextContainer.prototype = Object.create(DefaultTextContainer.prototype);
+TitleTextContainer.prototype.constructor = TitleTextContainer;
 
 
 
 // ** depends on tabbing impl
-var page_select_element = document.getElementById("page_select");
+var page_select = document.getElementById("page_select");
+
 var page_content_element = document.getElementById("page_content");
 var page_title_element = document.getElementById("page_title");
 
-var page_content = new DefaultTextContainer("page_content", "content");
-var page_title = new DefaultTextContainer("page_title", "title");
-page_title. // handle all the updating <select>s
+var page_content_container = new ContentTextContainer("page_content", "content", "page_content_error");
+var page_title_container = new TitleTextContainer("page_title", "title", "page_title_error");
+
+
+// ---------------------------------------------------------------------------
 
 
 var commandQueryEvent = ("commandQuery", { detail: {} });
