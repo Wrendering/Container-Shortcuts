@@ -18,22 +18,24 @@
 		--------<br>
 		<div>
 
-			<select id="remove_select"></select>
-
-			<form id="remove_form">
-				<input type="submit" id="remove_button" value="Remove Selected Page"></button><br>
-				<select id="remove_select"></select>
-			</form> <br>
-			--------<br>
-			<form id="add_form" novalidate>
-				<input type="submit" id="add_submit" value="Add Custom Page"></input><br>
+			<div>
+				<select id="page_select"></select>
+				<br>
+				<button type="submit" id="add_button" >Add New Page</button>
+				<button type="submit" id="upload_button" >Upload New Page</button>
+				<button type="submit" id="clone_button" >Clone Selected Page</button>
+				<button type="submit" id="remove_button" >Remove Selected Page</button>
+				<br>
+			</div>
+			<div>
 				Title:<br>
-				<input type="text" id="add_title"></input><br>
-				<span class="error" aria-live="polite" id="add_title_error"></span><br>
+				<input type="text" id="page_title"></input><br>
+				<span class="error" aria-live="polite" id="page_title_error"></span><br>
 				Content:<br>
-				<textarea id="add_content" rows="6"></textarea><br>
-				<span class="error" aria-live="polite" id="add_content_error"></span>
-			</form>
+				<textarea id="page_content" rows="6"></textarea><br>
+				<span class="error" aria-live="polite" id="page_content_error"></span>
+			</div>
+
 		</div>
 
 		<script src="options.js"></script>

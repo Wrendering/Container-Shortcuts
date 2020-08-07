@@ -48,14 +48,14 @@ var findTargetOptions = async function(callback) {
 
 var constructEmptyTargetInnerHTML = async function(targetHTML) {
 	if(typeof targetHTML == "undefined") targetHTML = "";
-	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+	return browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
 		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
 		content.forEach( (page) => {
 			targetHTML += `<option value='${page.selector}'>${page.title}</option>`;
 		});
-	});
 
-	return targetHTML;
+		return targetHTML;
+	});
 };
 
 var constructTargetHTML = async function() {
@@ -206,19 +206,19 @@ var removeSubmitResponse = async function(e) {
 		console.log("Something went wrong: <removeSubmitResponse> : " + e);
 	});
 };
-document.getElementById("remove_form").addEventListener("submit", removeSubmitResponse);
+document.getElementById("remove_button").addEventListener("click", removeSubmitResponse);
 
 
 
 var addSubmitResponse = async function(e) {
 	e.preventDefault();
 
-	await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+	return browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
 		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
 
 		// can, technically, overflow someday
 		let max = 19;
-		for(let i = 0; i < rs.length; ++i) {
+		for(let i = 0; i < page_select.options.length; ++i) {
 			if(page_select.options[i].disabled) continue;
 			let comp = parseInt(page_select.options[i].value);
 			max = max < comp ? comp : max;
@@ -227,16 +227,16 @@ var addSubmitResponse = async function(e) {
 
 		let newObject = {
 			selector : max,
-			title : "New Page(" + max + ")";
+			title : "New Page(" + max + ")",
 			content : ""
 		};
 
 		content.push(newObject);
-		browser.storage.local.set( { "custom_pages" : JSON.stringify(content) } ).then( () => {
+		return browser.storage.local.set( { "custom_pages" : JSON.stringify(content) } ).then( () => {
 			let newChild = document.createElement('option');
 			newChild.value = newObject.selector;
 			newChild.innerHTML = newObject.title;
-			document.getElementById("remove_select").appendChild(newChild);
+			page_select.appendChild(newChild);
 
 			findTargetOptions( (select) => {
 				select.appendChild(newChild.cloneNode(true));
@@ -250,15 +250,55 @@ var addSubmitResponse = async function(e) {
 		console.log("Something went wrong: <addSubmitResponse> : " + e);
 	});
 };
-document.getElementById("add_form").addEventListener("submit", addSubmitResponse);
+document.getElementById("add_button").addEventListener("click", addSubmitResponse);
 
 document.addEventListener('DOMContentLoaded', async () => {
 	updateCommandTable();
-	page_select.innerHTML = await constructEmptyTargetInnerHTML();
 });
 
 //---------------------------------------------------------------------------
 
+var eCR = {
+
+	i: -1,	// current index, so we short-circuit the loop when called repeatedly
+	content: null,	// a local copy of the custom_pages
+
+	get page() {
+		return this.content[this.i];
+	},
+
+	load: async function() {
+		return browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+			this.content = JSON.parse(custom_pages["custom_pages"] || "[]");
+		});
+	},
+
+	save: async function() {
+		return browser.storage.local.set( { "custom_pages" : JSON.stringify(this.content) } );
+	},
+
+	get invalid() {
+		return (this.i === -1 || this.content[this.i].selector.toString() !== page_select.value);
+	},
+
+	// ensure that we're currently selecting the same as the page_select box
+	update: async function() {
+		if( page_select.options[page_select.selectedIndex].id === "ps_empty") {
+			console.log("Tried to update while uninitialized ps_select"); //TODO figure out desired behavior here
+			return;
+		}
+
+		for( this.i = 0 ; this.i < this.content.length; ++this.i) {
+			if(this.content[this.i].selector.toString() === page_select.value ) break;
+		}
+
+		if(this.i >= this.content.length) {
+			console.log("eCR broken update:"); console.trace();
+			throw -100;
+		}
+	}
+
+};
 
 var DefaultTextContainer = function( id, propName, errorElementId ) {
 
@@ -266,39 +306,24 @@ var DefaultTextContainer = function( id, propName, errorElementId ) {
 
 	// Anything that can modify the content needs a listener below
 
-	this.eCR_i = -1;	// current index, so we short-circuit the loop when called repeatedly
-	this.eCR_content = null;
-	this.getContentStore = () => { return eCR_content[eCR_i][propName]; };
-	this.setContentStore = (value) => { eCR_content[eCR_i][propName] = value; };
+	this.getContentStore = () => { return eCR.page[propName]; };
+	this.setContentStore = (value) => { eCR.page[propName] = value; };
 
+	// Stores the content to ecr. does not save ecr for you
 	this.storeContentResponse = async function() {
 		this.setContentStore(this.relevantElement.value.replace("`", "\\`").replace("${", "\\${") );
+	}.bind(this);
 
-		return browser.storage.local.set( { "custom_pages" : JSON.stringify(eCR_content) } );
-	};
-
-	this.updateContentResponse = async function() {
-		if(eCR_i === -1 || eCR_content[eCR_i].selector.toString() !== page_select.value) {
-			for( eCR_i = 0 ; eCR_i < content.length; ++eCR_i) {
-				if(eCR_content[eCR_i].selector.toString() === page_select.value ) break;
-			}
-			if(eCR_i >= content.length) { console.log("WTF"); throw -69; }
-		}
-
-		await browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
-			eCR_content = JSON.parse(custom_pages["custom_pages"] || "[]");
-		}
-	};
-
-
-	document.addEventListener('DOMContentLoaded', this.updateContentResponse);
+	// Loads the appropriate content from eCR. Assumes that eCR_i already set.
+	this.loadContentResponse = async function() {
+		this.relevantElement.value = this.getContentStore();
+	}.bind(this);
 
 	this.relevantElement.addEventListener("change", this.storeContentResponse);
-	window.addEventListener("unload", this.storeContentResponse);
-	this.addEventListener("commandQuery", this.storeContentResponse);
 
-	document.getElementById("page_select").addEventListener("change",
-		this.storeContentResponse.then(this.updateContentResponse));
+	page_select.addEventListener("my_beforechange", this.storeContentResponse);
+	page_select.addEventListener("my_beforechange", this.storeContentResponse);
+	page_select.addEventListener("my_afterchange", this.loadContentResponse);
 	// any others? probably tab change
 
 
@@ -317,7 +342,7 @@ var DefaultTextContainer = function( id, propName, errorElementId ) {
 			this.errorElement.className = 'error';
 		}
 	};
-	this.relevantElement.addListener("input", this.clearError);
+	this.relevantElement.addEventListener("input", this.clearError);
 
 };
 
@@ -333,16 +358,16 @@ var TitleTextContainer = function( id, propName, errorElementId) {
 	DefaultTextContainer.call(this, id, propName, errorElementId);
 
 	this.storeContentResponse = async function() {
-
-		// https://developer.mozilla.org/en-US/docs/Learn/Forms/Form_validation
-		if(add_title.value === "") {
+		if(this.relevantElement.value === "") {
 			this.addError('A title is required');
 			this.relevantElement.innerHTML = this.getContentStore();
 			return;
 		}
+		// TODO: onkey updates time var and edit bool,
+		//once/second checks bool, then most recent upd >1 sec ago, then check err condition
 
-		for( let i = 0; i < rs.children.length; ++i) {
-			if(! rs.options[i].disabled && rs.options[i].innerText === add_title.value) {
+		for( let i = 0; i < page_select.options.length; ++i) {
+			if(! page_select.options[i].disabled && page_select.options[i].innerText === this.relevantElement.value) {
 				this.addError('Titles must be unique');
 				this.relevantElement.innerHTML = this.getContentStore();
 				return;
@@ -354,23 +379,23 @@ var TitleTextContainer = function( id, propName, errorElementId) {
 		});
 
 		return TitleTextContainer.prototype.storeContentResponse.call(this);
-	};
+	}.bind(this);
 
 
 	// utility methods
-	this.updateTargetOptions(callback) = function(callback) {
+	this.updateTargetOptions = function(callback) {
 		findTargetOptions( (select) => {	// defined in 1st section
 			callback(select, this.getTargetIndex(select));
 		});
 	};
 	this.uTO_i = 0;
 	this.getTargetIndex = function(select) {
-		if(select.options[uTO_i].value !== rs.value) {
-			for( uTO_i = 0; uTO_i < select.options.length; ++uTO_i) {
-				if(select.options[uTO_i].value == rs.value) break;
+		if(select.options[this.uTO_i].value !== page_select.value) {
+			for( this.uTO_i = 0; this.uTO_i < select.options.length; ++this.uTO_i) {
+				if(select.options[this.uTO_i].value == page_select.value) break;
 			}
 		}
-		if(uTO_i >= select.options) { console.log("WTF"); throw -69; }
+		if(this.uTO_i >= select.options.length ) { console.log("WTF"); throw -69; }
 	};
 
 };
@@ -382,17 +407,43 @@ TitleTextContainer.prototype.constructor = TitleTextContainer;
 // ** depends on tabbing impl
 var page_select = document.getElementById("page_select");
 
-var page_content_element = document.getElementById("page_content");
 var page_title_element = document.getElementById("page_title");
-
-var page_content_container = new ContentTextContainer("page_content", "content", "page_content_error");
 var page_title_container = new TitleTextContainer("page_title", "title", "page_title_error");
 
+var page_content_element = document.getElementById("page_content");
+var page_content_container = new ContentTextContainer("page_content", "content", "page_content_error");
 
-// ---------------------------------------------------------------------------
 
 
-var commandQueryEvent = ("commandQuery", { detail: {} });
+var my_commandQueryEvent = new Event("my_commandQuery");
+var my_beforechangeEvent = new Event("my_beforechange");
+var my_afterchangeEvent  = new Event("my_afterchange");
+
+page_select.addEventListener("change", () => {
+	if(eCR.invalid) {
+		page_select.dispatchEvent(my_beforechangeEvent);
+		eCR.update();
+		page_select.dispatchEvent(my_afterchangeEvent);
+	}
+	// ** Technically unnecessary but kinda may as well
+	// eCR.save();
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+	eCR.load();
+
+	// should i maybe do OO stuff and make a page_select object to handle the 'selectedness'?
+	//   Is there a built-in for this? Also, keep previous selected one
+	page_select.innerHTML = await constructEmptyTargetInnerHTML("<option value='-1' id='ps_empty' >&#9472;</option>");
+	// keep track of most recent selection?
+	// TODO TODO: Disable (potentially make not exist) buttons if select isn't selecting anything
+	page_select.dispatchEvent(my_afterchangeEvent);
+});
+
+window.addEventListener("beforeunload", () => {
+	page_select.dispatchEvent(my_beforechangeEvent);
+	eCR.save();
+});
 
 browser.runtime.onMessage.addListener(async (message) => {
 	if(message.substring(0, 12) == "commandQuery") {
@@ -401,8 +452,9 @@ browser.runtime.onMessage.addListener(async (message) => {
 			// HANDLE ALL the relevant things that may need saving
 			// could probably check only if currently selected, either by saving or checking selected status, but eh
 			// TODO: Either make async, or test to show self this is pointless optimization
-			page_content.dispatchEvent(commandQueryEvent);
-			page_title.dispatchEvent(commandQueryEvent);
+			page_select.dispatchEvent(my_commandQueryEvent);
+
+			eCR.save();
 		}
 
 		browser.runtime.sendMessage("commandResponse").catch(err => {
