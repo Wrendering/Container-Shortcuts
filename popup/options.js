@@ -151,7 +151,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 var removeSubmitResponse = async function(e) {
 	e.preventDefault();
 
-	if( ! page_select.value) return;
+	if( Nable() ) return;
 
 	const promise_custom = browser.storage.local.get( [ "custom_pages" ] );
 	const promise_commands = browser.commands.getAll();
@@ -267,6 +267,10 @@ var eCR = {
 		return this.content[this.i];
 	},
 
+	get turnt() {
+		return this.i !== -1;
+	},
+
 	load: async function() {
 		return browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
 			this.content = JSON.parse(custom_pages["custom_pages"] || "[]");
@@ -277,14 +281,14 @@ var eCR = {
 		return browser.storage.local.set( { "custom_pages" : JSON.stringify(this.content) } );
 	},
 
-	get invalid() {
-		return (this.i === -1 || this.content[this.i].selector.toString() !== page_select.value);
+	get invalid() { // TODO: honestly prob take this out shouldn't need to rely on it
+		return (this.content[this.i].selector.toString() !== page_select.value);
 	},
 
 	// ensure that we're currently selecting the same as the page_select box
-	update: async function() {
-		if( page_select.options[page_select.selectedIndex].id === "ps_empty") {
-			console.log("Tried to update while uninitialized ps_select"); //TODO figure out desired behavior here
+	update: function() {
+		if(Nable()) {
+			this.i = -1;
 			return;
 		}
 
@@ -303,6 +307,9 @@ var eCR = {
 var DefaultTextContainer = function( id, propName, errorElementId ) {
 
 	this.relevantElement = document.getElementById(id);
+
+	page_select.addEventListener("my_enable", () => { this.relevantElement.removeAttribute('disabled'); });
+	page_select.addEventListener("my_disable", () => { this.relevantElement.disabled = true; });
 
 	// Anything that can modify the content needs a listener below
 
@@ -418,31 +425,52 @@ var page_content_container = new ContentTextContainer("page_content", "content",
 var my_commandQueryEvent = new Event("my_commandQuery");
 var my_beforechangeEvent = new Event("my_beforechange");
 var my_afterchangeEvent  = new Event("my_afterchange");
+var my_enableEvent  = new Event("my_enable");
+var my_disableEvent  = new Event("my_disable");
+
+
+var Nable = function() {
+	return ( page_select.options[page_select.selectedIndex].id === "ps_empty" );
+};
+
+var potentialEvent = function() {
+	if(eCR.turnt) {
+		page_select.dispatchEvent(my_enableEvent);
+		page_select.dispatchEvent(my_afterchangeEvent);
+	} else {
+		page_select.dispatchEvent(my_disableEvent);
+	}
+};
 
 page_select.addEventListener("change", () => {
 	if(eCR.invalid) {
-		page_select.dispatchEvent(my_beforechangeEvent);
+		if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
+
 		eCR.update();
-		page_select.dispatchEvent(my_afterchangeEvent);
+
+		potentialEvent();
 	}
 	// ** Technically unnecessary but kinda may as well
 	// eCR.save();
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-	eCR.load();
-
 	// should i maybe do OO stuff and make a page_select object to handle the 'selectedness'?
 	//   Is there a built-in for this? Also, keep previous selected one
 	page_select.innerHTML = await constructEmptyTargetInnerHTML("<option value='-1' id='ps_empty' >&#9472;</option>");
 	// keep track of most recent selection?
 	// TODO TODO: Disable (potentially make not exist) buttons if select isn't selecting anything
-	page_select.dispatchEvent(my_afterchangeEvent);
+
+
+	await eCR.load();
+	eCR.update();
+
+	potentialEvent();
 });
 
-window.addEventListener("beforeunload", () => {
-	page_select.dispatchEvent(my_beforechangeEvent);
-	eCR.save();
+window.addEventListener("beforeunload", async () => {
+	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
+	await eCR.save();
 });
 
 browser.runtime.onMessage.addListener(async (message) => {
@@ -454,7 +482,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 			// TODO: Either make async, or test to show self this is pointless optimization
 			page_select.dispatchEvent(my_commandQueryEvent);
 
-			eCR.save();
+			await eCR.save();
 		}
 
 		browser.runtime.sendMessage("commandResponse").catch(err => {
@@ -462,3 +490,20 @@ browser.runtime.onMessage.addListener(async (message) => {
 		});
 	}
 });
+
+
+
+/*	let temp_setter = function(val) {
+		this.__enabled = !!val;
+		if(val) {
+			this.relevantElement.removeAttribute('disabled');
+		} else {
+			this.relevantElement.disabled = true;
+		}
+	};
+	Object.defineProperty(this, 'enabled', {
+		get: function() {
+			return this.__enabled;
+		},
+		set: temp_setter
+ 	}, true);*/
