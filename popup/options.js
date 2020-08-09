@@ -144,6 +144,9 @@ browser.runtime.onMessage.addListener(async (message) => {
 	}
 });
 
+document.addEventListener('DOMContentLoaded', async () => {
+	updateCommandTable();
+});
 
 //---------------------------------------------------------------------------
 
@@ -153,12 +156,13 @@ var removeSubmitResponse = async function(e) {
 
 	if( Nable() ) return;
 
-	const promise_custom = browser.storage.local.get( [ "custom_pages" ] );
+	//const promise_custom = browser.storage.local.get( [ "custom_pages" ] );
 	const promise_commands = browser.commands.getAll();
-	Promise.all([promise_custom, promise_commands]).then( (results) => {
-		let custom_pages = results[0];
+	Promise.all([ /*promise_custom,*/ promise_commands]).then( (results) => {
+		//let custom_pages = results[0];
 		let commands = results[1];
-		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
+		//let content = JSON.parse(custom_pages["custom_pages"] || "[]");
+		let content = eCR.content;
 
 		let i = 0;
 		for( ; i < content.length; ++i) {
@@ -179,7 +183,7 @@ var removeSubmitResponse = async function(e) {
 
 		return Promise.all(get_promises).then( () => {
 			content.splice(i, 1);
-			return browser.storage.local.set({ "custom_pages" : JSON.stringify(content) }) ;
+			//return browser.storage.local.set({ "custom_pages" : JSON.stringify(content) }) ;
 		} );
 
 	}).then( () => {
@@ -213,48 +217,49 @@ document.getElementById("remove_button").addEventListener("click", removeSubmitR
 var addSubmitResponse = async function(e) {
 	e.preventDefault();
 
-	return browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
-		let content = JSON.parse(custom_pages["custom_pages"] || "[]");
+	//return browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
+	//	let content = JSON.parse(custom_pages["custom_pages"] || "[]");
+	let content = eCR.content;
 
-		// can, technically, overflow someday
-		let max = 19;
-		for(let i = 0; i < page_select.options.length; ++i) {
-			if(page_select.options[i].disabled) continue;
-			let comp = parseInt(page_select.options[i].value);
-			max = max < comp ? comp : max;
-		}
-		max = max + 1;
+	// can, technically, overflow someday
+	let max = 19;
+	for(let i = 0; i < page_select.options.length; ++i) {
+		if(page_select.options[i].disabled) continue;
+		let comp = parseInt(page_select.options[i].value);
+		max = max < comp ? comp : max;
+	}
+	max = max + 1;
 
-		let newObject = {
-			selector : max,
-			title : "New Page(" + max + ")",
-			content : ""
-		};
+	let newObject = {
+		selector : max,
+		title : "New Page(" + max + ")",
+		content : ""
+	};
 
-		content.push(newObject);
-		return browser.storage.local.set( { "custom_pages" : JSON.stringify(content) } ).then( () => {
-			let newChild = document.createElement('option');
-			newChild.value = newObject.selector;
-			newChild.innerHTML = newObject.title;
-			page_select.appendChild(newChild);
+	content.push(newObject);
+	//return browser.storage.local.set( { "custom_pages" : JSON.stringify(content) } ).then( () => {
 
-			findTargetOptions( (select) => {
-				select.appendChild(newChild.cloneNode(true));
-			});
+	let newChild = document.createElement('option');
+	newChild.value = newObject.selector;
+	newChild.innerHTML = newObject.title;
 
+	page_select.appendChild(newChild);
+	page_select.selectedIndex = newChild.index;
+	page_select.dispatchEvent(new Event('change'));
 
-			page_title_element.value = "";
-			page_content_element.value = "";
-		});
-	}).catch( (e) => {
-		console.log("Something went wrong: <addSubmitResponse> : " + e);
+	findTargetOptions( (select) => {
+		select.appendChild(newChild.cloneNode(true));
 	});
+
+	//page_title_element.value = "";
+	//page_content_element.value = "";
+
+	//});
+	//}).catch( (e) => {
+	//	console.log("Something went wrong: <addSubmitResponse> : " + e);
+	//});
 };
 document.getElementById("add_button").addEventListener("click", addSubmitResponse);
-
-document.addEventListener('DOMContentLoaded', async () => {
-	updateCommandTable();
-});
 
 //---------------------------------------------------------------------------
 
@@ -268,7 +273,7 @@ var eCR = {
 	},
 
 	get turnt() {
-		return this.i !== -1;
+		return this.i != -1;
 	},
 
 	load: async function() {
@@ -282,7 +287,7 @@ var eCR = {
 	},
 
 	get invalid() { // TODO: honestly prob take this out shouldn't need to rely on it
-		return (this.content[this.i].selector.toString() !== page_select.value);
+		return (this.i == -1 || this.content[this.i].selector.toString() !== page_select.value);
 	},
 
 	// ensure that we're currently selecting the same as the page_select box
@@ -291,6 +296,8 @@ var eCR = {
 			this.i = -1;
 			return;
 		}
+		console.log(this.content);
+		console.log(page_select);
 
 		for( this.i = 0 ; this.i < this.content.length; ++this.i) {
 			if(this.content[this.i].selector.toString() === page_select.value ) break;
@@ -309,7 +316,10 @@ var DefaultTextContainer = function( id, propName, errorElementId ) {
 	this.relevantElement = document.getElementById(id);
 
 	page_select.addEventListener("my_enable", () => { this.relevantElement.removeAttribute('disabled'); });
-	page_select.addEventListener("my_disable", () => { this.relevantElement.disabled = true; });
+	page_select.addEventListener("my_disable", () => {
+		this.relevantElement.disabled = true;
+		this.relevantElement.value = "";
+	});
 
 	// Anything that can modify the content needs a listener below
 
@@ -326,11 +336,11 @@ var DefaultTextContainer = function( id, propName, errorElementId ) {
 		this.relevantElement.value = this.getContentStore();
 	}.bind(this);
 
-	this.relevantElement.addEventListener("change", this.storeContentResponse);
+	this.relevantElement.addEventListener("change", () => { this.storeContentResponse(); } );
 
-	page_select.addEventListener("my_beforechange", this.storeContentResponse);
-	page_select.addEventListener("my_beforechange", this.storeContentResponse);
-	page_select.addEventListener("my_afterchange", this.loadContentResponse);
+	page_select.addEventListener("my_beforechange", () => { this.storeContentResponse(); } );
+	page_select.addEventListener("my_beforechange", () => { this.storeContentResponse(); } );
+	page_select.addEventListener("my_afterchange", () => { this.loadContentResponse(); } );
 	// any others? probably tab change
 
 
@@ -365,6 +375,8 @@ var TitleTextContainer = function( id, propName, errorElementId) {
 	DefaultTextContainer.call(this, id, propName, errorElementId);
 
 	this.storeContentResponse = async function() {
+		console.log("sfjklsajfklsd");
+
 		if(this.relevantElement.value === "") {
 			this.addError('A title is required');
 			this.relevantElement.innerHTML = this.getContentStore();
@@ -380,7 +392,6 @@ var TitleTextContainer = function( id, propName, errorElementId) {
 				return;
 			}
 		}
-
 		this.updateTargetOptions( (select, option_index) => {
 			select.options[option_index].innerText = this.relevantElement.value;
 		});
@@ -468,7 +479,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 	potentialEvent();
 });
 
-window.addEventListener("beforeunload", async () => {
+
+// Blur seems to do slightly better than unload because it happens earlier
+// TODO Someone explain to me WHY javascript feels the NEED to BE THIS WAY
+
+//window.addEventListener("unload", async () => {
+window.addEventListener("blur", async (e) => {
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
 	await eCR.save();
 });
@@ -490,20 +506,3 @@ browser.runtime.onMessage.addListener(async (message) => {
 		});
 	}
 });
-
-
-
-/*	let temp_setter = function(val) {
-		this.__enabled = !!val;
-		if(val) {
-			this.relevantElement.removeAttribute('disabled');
-		} else {
-			this.relevantElement.disabled = true;
-		}
-	};
-	Object.defineProperty(this, 'enabled', {
-		get: function() {
-			return this.__enabled;
-		},
-		set: temp_setter
- 	}, true);*/
