@@ -251,9 +251,6 @@ var addSubmitResponse = async function(e) {
 		select.appendChild(newChild.cloneNode(true));
 	});
 
-	//page_title_element.value = "";
-	//page_content_element.value = "";
-
 	//});
 	//}).catch( (e) => {
 	//	console.log("Something went wrong: <addSubmitResponse> : " + e);
@@ -296,8 +293,6 @@ var eCR = {
 			this.i = -1;
 			return;
 		}
-		console.log(this.content);
-		console.log(page_select);
 
 		for( this.i = 0 ; this.i < this.content.length; ++this.i) {
 			if(this.content[this.i].selector.toString() === page_select.value ) break;
@@ -313,113 +308,125 @@ var eCR = {
 
 var DefaultTextContainer = function( id, propName, errorElementId ) {
 
-	this.relevantElement = document.getElementById(id);
+	let child = this;	// in case I, idk, add a parent or something at some point
 
-	page_select.addEventListener("my_enable", () => { this.relevantElement.removeAttribute('disabled'); });
-	page_select.addEventListener("my_disable", () => {
+	child.relevantElement = document.getElementById(id);
+
+	page_select.addEventListener("my_enable",  (() => {
+		this.relevantElement.removeAttribute('disabled');
+	}).bind(child) );
+	page_select.addEventListener("my_disable", (() => {
 		this.relevantElement.disabled = true;
 		this.relevantElement.value = "";
-	});
+	}).bind(child) );
 
 	// Anything that can modify the content needs a listener below
 
-	this.getContentStore = () => { return eCR.page[propName]; };
-	this.setContentStore = (value) => { eCR.page[propName] = value; };
+	child.getContentStore = () => { return eCR.page[propName]; };
+	child.setContentStore = (value) => { eCR.page[propName] = value; };
 
 	// Stores the content to ecr. does not save ecr for you
-	this.storeContentResponse = async function() {
+	child.storeContentResponse = function() {
 		this.setContentStore(this.relevantElement.value.replace("`", "\\`").replace("${", "\\${") );
-	}.bind(this);
+	};
 
 	// Loads the appropriate content from eCR. Assumes that eCR_i already set.
-	this.loadContentResponse = async function() {
+	child.loadContentResponse = function() {
 		this.relevantElement.value = this.getContentStore();
-	}.bind(this);
+	};
 
-	this.relevantElement.addEventListener("change", () => { this.storeContentResponse(); } );
+	child.relevantElement.addEventListener("change", (() => { this.storeContentResponse(); }).bind(child) );
 
-	page_select.addEventListener("my_beforechange", () => { this.storeContentResponse(); } );
-	page_select.addEventListener("my_beforechange", () => { this.storeContentResponse(); } );
-	page_select.addEventListener("my_afterchange", () => { this.loadContentResponse(); } );
+	page_select.addEventListener("my_beforechange", (() => { this.storeContentResponse(); }).bind(child) );
+	page_select.addEventListener("my_afterchange", (() => { this.loadContentResponse(); }).bind(child) );
 	// any others? probably tab change
 
 
 
-	this.errorElement = document.getElementById(errorElementId);
-	this.errored = false;
-	this.addError = function(message) {
+	child.errorElement = document.getElementById(errorElementId);
+	child.errored = false;
+	child.addError = function(message) {
 		this.errored = true;
 		this.errorElement.textContent = message;
 		this.errorElement.className = 'error active';
 	};
-	this.clearError = function() {
+	child.clearError = function() {
 		if(this.errored) {
 			this.errored = false;
 			this.errorElement.innerHTML = '';
 			this.errorElement.className = 'error';
 		}
 	};
-	this.relevantElement.addEventListener("input", this.clearError);
+	child.relevantElement.addEventListener("input", (() => { this.clearError(); }).bind(child) );
 
+	return child;
 };
 
 
 var ContentTextContainer = function( id, propName, errorElementId) {
-	DefaultTextContainer.call(this, id, propName, errorElementId);
+	let child = new DefaultTextContainer(id, propName, errorElementId);
+	return child;
 };
-ContentTextContainer.prototype = Object.create(DefaultTextContainer.prototype);
-ContentTextContainer.prototype.constructor = ContentTextContainer;
 
 
 var TitleTextContainer = function( id, propName, errorElementId) {
-	DefaultTextContainer.call(this, id, propName, errorElementId);
+	let child = new DefaultTextContainer(id, propName, errorElementId);
 
-	this.storeContentResponse = async function() {
-		console.log("sfjklsajfklsd");
+	let super_storeContentResponse = child.storeContentResponse;
+	child.storeContentResponse = function() {
+		if( ! this.validateOrError() ) return;
+		this.updateTargetOptions( (select, option_index) => {
+			select.options[option_index].innerText = this.relevantElement.value;
+		},  eCR.page.selector.toString() );
+		page_select[this.getTargetIndex(page_select, eCR.page.selector.toString() )].innerText = this.relevantElement.value;
 
+		return (super_storeContentResponse.bind(this))();
+	};
+
+	child.validateOrError = function() {
 		if(this.relevantElement.value === "") {
 			this.addError('A title is required');
-			this.relevantElement.innerHTML = this.getContentStore();
-			return;
+			this.relevantElement.value = this.getContentStore();
+			return false; //for inscrutable reasons, can't write to innerText/HTML
 		}
 		// TODO: onkey updates time var and edit bool,
 		//once/second checks bool, then most recent upd >1 sec ago, then check err condition
 
 		for( let i = 0; i < page_select.options.length; ++i) {
-			if(! page_select.options[i].disabled && page_select.options[i].innerText === this.relevantElement.value) {
+			let temp = page_select.options[i];
+			if(! temp.disabled && temp.innerText === this.relevantElement.value) {
+				if(temp.value == eCR.page.selector.toString()) continue;
+
 				this.addError('Titles must be unique');
-				this.relevantElement.innerHTML = this.getContentStore();
-				return;
+				this.relevantElement.value = this.getContentStore();
+				return false;
 			}
 		}
-		this.updateTargetOptions( (select, option_index) => {
-			select.options[option_index].innerText = this.relevantElement.value;
-		});
-
-		return TitleTextContainer.prototype.storeContentResponse.call(this);
-	}.bind(this);
-
+		return true;
+	};
 
 	// utility methods
-	this.updateTargetOptions = function(callback) {
+	child.updateTargetOptions = function(callback, targetVal) {
 		findTargetOptions( (select) => {	// defined in 1st section
-			callback(select, this.getTargetIndex(select));
+			callback(select, this.getTargetIndex(select, targetVal));
 		});
-	};
-	this.uTO_i = 0;
-	this.getTargetIndex = function(select) {
-		if(select.options[this.uTO_i].value !== page_select.value) {
+	}.bind(child);
+	child.uTO_i = 0;
+	child.getTargetIndex = function(select, targetVal) {
+		if(this.uTO_i >= select.options.length
+		  || select.options[this.uTO_i].value !== targetVal) {
+
 			for( this.uTO_i = 0; this.uTO_i < select.options.length; ++this.uTO_i) {
-				if(select.options[this.uTO_i].value == page_select.value) break;
+				if(select.options[this.uTO_i].value == targetVal) break;
 			}
 		}
 		if(this.uTO_i >= select.options.length ) { console.log("WTF"); throw -69; }
-	};
 
+		return this.uTO_i;
+	}.bind(child);
+
+	return child;
 };
-TitleTextContainer.prototype = Object.create(DefaultTextContainer.prototype);
-TitleTextContainer.prototype.constructor = TitleTextContainer;
-
 
 
 // ** depends on tabbing impl
@@ -453,6 +460,7 @@ var potentialEvent = function() {
 	}
 };
 
+// TODO: look into onInput, blur, onPaste, onKeyDown (maybe not), etc
 page_select.addEventListener("change", () => {
 	if(eCR.invalid) {
 		if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
@@ -484,13 +492,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 // TODO Someone explain to me WHY javascript feels the NEED to BE THIS WAY
 
 //window.addEventListener("unload", async () => {
+//var unload_nonsense = false;
 window.addEventListener("blur", async (e) => {
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
 	await eCR.save();
+	//unload_nonsense = true;
 });
 
+/*window.addEventListener("unload", async () => {
+	if( ! unload_nonsense) {
+		console.log("browser.localstorage may be slower than the unload process.");
+	}
+});*/
+
 browser.runtime.onMessage.addListener(async (message) => {
+	console.log(1);
 	if(message.substring(0, 12) == "commandQuery") {
+		console.log(12);
+
 		// Check if the command in question is the one currently being edited
 		if(document.getElementById("row_" + message.substring(12)).cells[2].children[0].value == page_select_element.value) {
 			// HANDLE ALL the relevant things that may need saving
