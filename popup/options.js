@@ -1,5 +1,12 @@
 "use strict"
 
+// for command redirection; see below
+let connection_port = browser.runtime.connect();
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+/*   Primary Select Table    */
+
 var indexMap = {} ;
 var revIndexMap = {} ;
 
@@ -148,8 +155,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 	updateCommandTable();
 });
 
-//---------------------------------------------------------------------------
-
+//----------------------------------------------------------------------------------------------------------------------------
+/*   Add/Remove Page Tab    */
 
 var removeSubmitResponse = async function(e) {
 	e.preventDefault();
@@ -157,10 +164,11 @@ var removeSubmitResponse = async function(e) {
 	if( Nable() ) return;
 
 	//const promise_custom = browser.storage.local.get( [ "custom_pages" ] );
+	// this is really unnecessary, just cache it
 	const promise_commands = browser.commands.getAll();
 	Promise.all([ /*promise_custom,*/ promise_commands]).then( (results) => {
 		//let custom_pages = results[0];
-		let commands = results[1];
+		let commands = results[0];
 		//let content = JSON.parse(custom_pages["custom_pages"] || "[]");
 		let content = eCR.content;
 
@@ -204,6 +212,9 @@ var removeSubmitResponse = async function(e) {
 		});
 
 		page_select.remove(page_select.selectedIndex);
+		page_select.selectedIndex = 0;	// should be the --- option
+		eCR.update(); // actually just sets i to -1 really
+		page_select.dispatchEvent(my_disableEvent);
 
 		return Promise.all(update_promises);
 	}).catch( (e) => {
@@ -214,11 +225,9 @@ document.getElementById("remove_button").addEventListener("click", removeSubmitR
 
 
 
-var addSubmitResponse = async function(e) {
+var addSubmitResponse = async function(e, intitle, incontent) {
 	e.preventDefault();
 
-	//return browser.storage.local.get( [ "custom_pages" ] ).then( (custom_pages) => {
-	//	let content = JSON.parse(custom_pages["custom_pages"] || "[]");
 	let content = eCR.content;
 
 	// can, technically, overflow someday
@@ -232,12 +241,11 @@ var addSubmitResponse = async function(e) {
 
 	let newObject = {
 		selector : max,
-		title : "New Page(" + max + ")",
-		content : ""
+		title : (typeof intitle == "undefined") ? "New Page(" + max + ")" : intitle,
+		content : (typeof incontent == "undefined") ? "" : incontent
 	};
 
 	content.push(newObject);
-	//return browser.storage.local.set( { "custom_pages" : JSON.stringify(content) } ).then( () => {
 
 	let newChild = document.createElement('option');
 	newChild.value = newObject.selector;
@@ -251,14 +259,26 @@ var addSubmitResponse = async function(e) {
 		select.appendChild(newChild.cloneNode(true));
 	});
 
-	//});
-	//}).catch( (e) => {
-	//	console.log("Something went wrong: <addSubmitResponse> : " + e);
-	//});
 };
-document.getElementById("add_button").addEventListener("click", addSubmitResponse);
+document.getElementById("add_button").addEventListener("click", (e) => { addSubmitResponse(e); } );
 
-//---------------------------------------------------------------------------
+
+var cloneSubmitResponse = async function(e) {
+	// TODO: rename eCR content and page.content, that's just an accident waiting to happen
+	addSubmitResponse(e, "copy of " + eCR.page.title, eCR.page.content);
+};
+document.getElementById("clone_button").addEventListener("click", cloneSubmitResponse);
+
+//var uploadSubmitResponse = async function(e) {
+//
+//	addSubmitResponse(e, , );
+//};
+//document.getElementById("clone_button").addEventListener("click", uploadSubmitResponse);
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+/*   Title / Content Storage    */
+
 
 var eCR = {
 
@@ -429,6 +449,9 @@ var TitleTextContainer = function( id, propName, errorElementId) {
 };
 
 
+//----------------------------------------------------------------------------------------------------------------------------
+/*   Responding to open/close/change events    */
+
 // ** depends on tabbing impl
 var page_select = document.getElementById("page_select");
 
@@ -476,10 +499,22 @@ page_select.addEventListener("change", () => {
 document.addEventListener('DOMContentLoaded', async () => {
 	// should i maybe do OO stuff and make a page_select object to handle the 'selectedness'?
 	//   Is there a built-in for this? Also, keep previous selected one
+	let prev_sel = browser.storage.local.get( ["previous_selector"] ).then( (val) => {
+		return val["previous_selector"];
+	});
 	page_select.innerHTML = await constructEmptyTargetInnerHTML("<option value='-1' id='ps_empty' >&#9472;</option>");
-	// keep track of most recent selection?
-	// TODO TODO: Disable (potentially make not exist) buttons if select isn't selecting anything
+	prev_sel = (await prev_sel);
 
+	if(prev_sel != -1) {
+		let i = 0;
+		for(; i < page_select.length; ++i) {
+			if(page_select.options[i].value == prev_sel.toString()) break;
+		}
+		if(i < page_select.length) page_select.selectedIndex = i;
+	}	// Note: ALL of the above could almost certainly be done better
+		//  by a CSS selector or however those things work. Actually, TODO
+
+	// TODO TODO: Disable (potentially make not exist) buttons if select isn't selecting anything
 
 	await eCR.load();
 	eCR.update();
@@ -493,9 +528,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 //window.addEventListener("unload", async () => {
 //var unload_nonsense = false;
-window.addEventListener("blur", async (e) => {
+window.addEventListener("unload", async (e) => {
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
-	await eCR.save();
+
+	await Promise.all([	//not like it matters I think
+	browser.storage.local.set( {["previous_selector"] : page_select.options[page_select.selectedIndex].value } ),
+	eCR.save()        ]);
 	//unload_nonsense = true;
 });
 
@@ -506,12 +544,10 @@ window.addEventListener("blur", async (e) => {
 });*/
 
 browser.runtime.onMessage.addListener(async (message) => {
-	console.log(1);
 	if(message.substring(0, 12) == "commandQuery") {
-		console.log(12);
 
 		// Check if the command in question is the one currently being edited
-		if(document.getElementById("row_" + message.substring(12)).cells[2].children[0].value == page_select_element.value) {
+		if(document.getElementById("row_" + message.substring(12)).cells[2].children[0].value == page_select.value) {
 			// HANDLE ALL the relevant things that may need saving
 			// could probably check only if currently selected, either by saving or checking selected status, but eh
 			// TODO: Either make async, or test to show self this is pointless optimization

@@ -1,6 +1,7 @@
 browser.storage.local.clear();		//TODO: This almost certainly shouldn't be here so I preserve data
 
 browser.storage.local.set({ ["custom_pages"]: ""  });
+browser.storage.local.set({ ["previous_selector"]: -1 });
 
 browser.commands.getAll().then( (commands) => {
 	commands.forEach( (command) => {
@@ -16,18 +17,23 @@ browser.commands.getAll().then( (commands) => {
 
 
 
+
 var currentlyOpen = false;	// is there a more elegant way to do this?
 browser.runtime.onMessage.addListener(async (message) => {
-
-	if(message == "open") {
-		currentlyOpen = true;
-	} else if(message == "close") {
-		currentlyOpen = false;
-
-	} else if(message == "commandResponse") {
+	if(message == "commandResponse") {
 		commandHandle(currentCommand);	//hoisting!
 	}
 });
+
+browser.runtime.onConnect.addListener( (port) => {
+  port.onDisconnect.addListener( () => {
+    currentlyOpen = false;
+    // Do stuff that should happen when popup window closes here
+	// TODO: Is saving anything at this point possible, instead of popup's unload
+  })
+
+  currentlyOpen = true;
+})
 
 var currentCommand = null; // for the interim b/t telling popup to update and calling
 browser.commands.onCommand.addListener( (commName) => {
