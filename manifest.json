@@ -18,15 +18,21 @@
 		"scripts": ["background-script.js"]
 	},
 
-	"browser_action": {
+	"sidebar_action": {
   		"default_icon": "icons/conttab-48.png",
-  		"theme_icons": [{
+		"default_title": "Tab Shortcuts",
+		"default_panel": "popup/options.html",
+		"open_at_install": true
+	},
+
+	"browser_action": {
+		"default_icon": "icons/conttab-48.png",
+		"theme_icons": [{
 			"light": "icons/conttab-48.png",
 			"dark": "icons/conttab-48.png",
 			"size": 48
 		}],
-		"default_title": "Tab Shortcuts",
-		"default_popup": "popup/options.html"
+		"default_title": "Tab Shortcuts"
 	},
 
 	"commands": {
