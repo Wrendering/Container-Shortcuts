@@ -1,18 +1,8 @@
 "use strict"
 
+// for command redirection; see below
 let connection_port = browser.runtime.connect();
 
-/*browser.runtime.onMessage.addListener(async (message) => {
-	if(message == "sidebarOpen") {
-		console.log
-	}
-});*/
-
-browser.windows.onFocusChanged.addListener( (windowId) => {
-	if(windowId != browser.windows.getCurrent().id) {
-		browser.sidebarAction.close();
-	}
-});
 
 //----------------------------------------------------------------------------------------------------------------------------
 /*   Primary Select Table    */
@@ -538,7 +528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 //window.addEventListener("unload", async () => {
 //var unload_nonsense = false;
-window.addEventListener("blur", async (e) => {
+window.addEventListener("unload", async (e) => {
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
 
 	await Promise.all([	//not like it matters I think

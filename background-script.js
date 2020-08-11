@@ -18,7 +18,7 @@ browser.commands.getAll().then( (commands) => {
 
 
 
-var currentlyOpenPort = null;	// is there a more elegant way to do this?
+var currentlyOpen = false;	// is there a more elegant way to do this?
 browser.runtime.onMessage.addListener(async (message) => {
 	if(message == "commandResponse") {
 		commandHandle(currentCommand);	//hoisting!
@@ -26,24 +26,19 @@ browser.runtime.onMessage.addListener(async (message) => {
 });
 
 browser.runtime.onConnect.addListener( (port) => {
-	browser.runtime.sendMessage("sidebarOpen").catch(err => {});
+  port.onDisconnect.addListener( () => {
+    currentlyOpen = false;
+    // Do stuff that should happen when popup window closes here
+	// TODO: Is saving anything at this point possible, instead of popup's unload
+  })
 
-	port.onDisconnect.addListener( () => {
-		if(currentlyOpenPort === port) currentlyOpenPort = null;
-	});
-
-  currentlyOpenPort = port;
-});
-
-browser.browserAction.onClicked.addListener( (e) => {
-	browser.sidebarAction.open();
-	return false;	// does this do what I want it to?
-});
+  currentlyOpen = true;
+})
 
 var currentCommand = null; // for the interim b/t telling popup to update and calling
 browser.commands.onCommand.addListener( (commName) => {
 	currentCommand = commName;
-	if(currentlyOpenPort !== null) {
+	if(currentlyOpen) {
 		browser.runtime.sendMessage("commandQuery" + commName).catch(err => {
 			console.log("ERROR: Popup is listed as open, but can't be messaged: " + err);
 		});
