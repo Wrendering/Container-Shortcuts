@@ -40,3 +40,62 @@ div.tabbedDiv {
 div.tabbedDiv.hide {
     display: none;
 }
+
+
+
+
+
+
+/* https://www.webdesignerdepot.com/2012/10/creating-a-modal-window-with-html5-and-css3/ */
+
+.modalDialog {
+    position: fixed;    /* moves down page when we scroll */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+
+    background: rgba(0,0,0,0.8);
+    z-index: 10000; /* on top */
+    opacity: 0; /* invisible until triggered */
+
+	transition: opacity 75ms linear;
+	pointer-events: none; /* not clickable */
+}
+
+/* if an element matches the current url fragment */
+.modalDialog:target {
+    opacity: 1;
+	pointer-events: auto;
+}
+
+.modalDialog > div {
+	width: 400px;
+	position: relative;
+	margin: 10% auto;
+	padding: 5px 20px 13px 20px;
+	border-radius: 10px;
+	background: #fff;
+	background: -moz-linear-gradient(#fff, #999);
+}
+
+.close {
+	background: #606061;
+	color: #FFFFFF;
+    text-decoration: none;
+	font-weight: bold;
+
+	line-height: 25px;
+    position: absolute; /* not part of normal flow but still rel to parent */
+	right: -12px;
+	top: -10px;
+	width: 24px;
+	border-radius: 12px;
+
+	text-align: center;
+	box-shadow: 1px 1px 3px #000;
+}
+
+.close:hover {
+    background: #00d9ff; 
+}
