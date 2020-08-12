@@ -561,3 +561,38 @@ browser.runtime.onMessage.addListener(async (message) => {
 		});
 	}
 });
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+/*   Tab functionality    */
+
+let getPaneFromTab = (li) => {
+	let url = li.querySelector("a").href;
+	url = url.substring(url.lastIndexOf ('#') + 1);
+	return document.getElementById(url);
+};
+
+let tabPanes = document.getElementsByClassName("tabList");
+for( const tabPane of tabPanes) {
+	let tabList = tabPane.querySelectorAll("li")
+	for( const li of tabList) {
+		let pane = getPaneFromTab(li);
+		li.addEventListener("click", (e) => {
+			if(li.classList.contains("selected")) {
+				e.stopPropagation();
+				return;
+			}
+		});
+		tabPane.addEventListener("click", (e) => {
+			if(e.target == tabPane) return;
+			if(e.target.parentNode == li) {
+				li.className = "selected";
+				pane.className = "tabbedDiv";
+			} else {
+				li.className = "";
+				pane.className = "tabbedDiv hide";
+			}
+		});
+	}
+
+}

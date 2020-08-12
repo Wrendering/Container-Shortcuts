@@ -2,10 +2,20 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
+
+		<link href="options.css" rel="stylesheet">
 	</head>
+
 	<body>
 
-		<div>
+		<nav>
+			<ul class="tabList">
+			   <li class="selected" ><a href="#tab_select" >Shortcuts</a></li>
+			   <li class="" ><a href="#tab_pages" >Custom Pages</a></li>
+			</ul>
+		</nav>
+
+		<div class="tabbedDiv" id="tab_select">
 			<table id="displayTable">
 				<thead>
 					<tr>
@@ -15,9 +25,10 @@
 				</thead>
 				<tbody></tbody>
 			</table>
-		</div> <br>
-		--------<br>
-		<div>
+		</div>
+
+
+		<div class="tabbedDiv hide" id="tab_pages">
 
 			<div>
 				<select id="page_select"></select>
@@ -32,6 +43,7 @@
 				<button type="submit" id="remove_button" >Remove Selected Page</button>
 				<br>
 			</div>
+
 			<div>
 				Title:<br>
 				<input type="text" id="page_title"></input><br>

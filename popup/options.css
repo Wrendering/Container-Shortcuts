@@ -1,0 +1,42 @@
+
+/* Source for some tab code: https://www.elated.com/javascript-tabs/ */
+
+ul.tabList {
+    list-style-type: none;
+    margin: 20px 0 0 0;
+    padding: 0 0 0.3em 0;
+}
+
+ul.tabList li {
+    display: inline; /* horizontal tab list */
+}
+
+ul.tabList li a {
+    color: #42454a;
+    background-color: #dedbde;
+    border: 1px solid #c9c3ba;
+    border-bottom: none;
+    padding: 0.3em;
+    text-decoration: none;
+}
+
+ul.tabList li a:hover {
+    background-color: #f1f0ee;
+}
+
+ul.tabList li.selected a {
+    color: #000;
+    background-color: #f1f0ee;
+    font-weight: bold;
+    padding: 0.7em 0.3em 0.38em 0.3em;  /* slightly larger */
+}
+
+div.tabbedDiv {
+    border: 1px solid #c9c3ba;
+    padding: 0.5em;
+    background-color: #f1f0ee;
+}
+
+div.tabbedDiv.hide {
+    display: none;
+}
