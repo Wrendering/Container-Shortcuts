@@ -8,15 +8,18 @@
 
 	<body>
 
-		<a href="#openModal">Open Modal</a>
-		<div id="openModal" class="modalDialog">
-			<div>
-				<a href="#closeModal" title="Close" class="close">X</a>
+		<a href="#modal" id="modal_opener">Open Modal</a>
+
+		<div id="modal" class="modalDialog">
+			<a href="#" class="closeBackground" id="modal_closer"><span></span></a>
+			<div id="modalContent">
 				<h2>Modal Box</h2>
 				<p>Here's a simple modal dialog box!</p>
-				<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque ac erat sit amet tortor pharetra ullamcorper vitae accumsan sapien. Donec aliquam suscipit commodo. Sed nec fermentum ante, id laoreet justo. Aliquam semper euismod tristique. Aenean eget ornare dui, et sollicitudin lectus. Pellentesque orci metus, consequat a libero ut, porttitor hendrerit magna. Aenean interdum dolor eu leo egestas iaculis. Cras ac quam consectetur dolor finibus fringilla. Nam et consequat lorem. Curabitur lacinia massa sed ex consequat, faucibus egestas metus vestibulum. Cras molestie sed orci id sagittis. In et augue sit amet tortor tincidunt interdum sed eget ex. Cras tellus nunc, tincidunt in fringilla quis, facilisis vitae urna. Sed nulla sem, posuere vel purus eu, fringilla eleifend augue. </p>
 			</div>
 		</div>
+
+		<input type="text" id="testText"></input>
+
 		<br>
 		<br>
 

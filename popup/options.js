@@ -596,3 +596,14 @@ for( const tabPane of tabPanes) {
 	}
 
 }
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+/* Modal functions */
+
+let modal = document.getElementById("modal");
+modal.onclick = (e) => {
+	if(e.target == modal) {
+		document.getElementById("modal").click();
+	}
+};

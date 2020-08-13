@@ -79,23 +79,10 @@ div.tabbedDiv.hide {
 	background: -moz-linear-gradient(#fff, #999);
 }
 
-.close {
-	background: #606061;
-	color: #FFFFFF;
-    text-decoration: none;
-	font-weight: bold;
-
-	line-height: 25px;
-    position: absolute; /* not part of normal flow but still rel to parent */
-	right: -12px;
-	top: -10px;
-	width: 24px;
-	border-radius: 12px;
-
-	text-align: center;
-	box-shadow: 1px 1px 3px #000;
-}
-
-.close:hover {
-    background: #00d9ff; 
+.closeBackground > span {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
 }
