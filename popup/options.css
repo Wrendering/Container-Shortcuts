@@ -44,45 +44,90 @@ div.tabbedDiv.hide {
 
 
 
+/* Modified from: http://www.cssarrowplease.com/ */
 
-
-/* https://www.webdesignerdepot.com/2012/10/creating-a-modal-window-with-html5-and-css3/ */
-
-.modalDialog {
-    position: fixed;    /* moves down page when we scroll */
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-
-    background: rgba(0,0,0,0.8);
-    z-index: 10000; /* on top */
-    opacity: 0; /* invisible until triggered */
-
-	transition: opacity 75ms linear;
-	pointer-events: none; /* not clickable */
+:root {
+    --arrow_box-background: #88b7d5;
+    --arrow_box-border: #c2e1f5;
 }
 
-/* if an element matches the current url fragment */
-.modalDialog:target {
-    opacity: 1;
-	pointer-events: auto;
-}
-
-.modalDialog > div {
-	width: 400px;
+.arrow_box {
 	position: relative;
-	margin: 10% auto;
-	padding: 5px 20px 13px 20px;
-	border-radius: 10px;
-	background: #fff;
-	background: -moz-linear-gradient(#fff, #999);
+	background: var(--arrow_box-background);
+	border: 1px solid var(--arrow_box-border);
+}
+.arrow_box:after, .arrow_box:before {
+	bottom: 100%;
+	left: 50%;
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
 }
 
-.closeBackground > span {
+.arrow_box:after {
+	border-color: rgba( #var(--arrow_box-background), 0);
+	border-bottom-color: var(--arrow_box-background);
+	border-width: 8px;
+	margin-left: -8px;
+}
+.arrow_box:before {
+	border-color: rgba( #var(--arrow_box-border), 0);
+	border-bottom-color: var(--arrow_box-border);
+	border-width: 9px;
+	margin-left: -9px;
+}
+
+/* - - */
+
+.key_div {
+    position: relative;
+    background-color: rgba(200, 200, 0, 1);
+}
+
+.key_label {
+    width: 100px;
+    height: 20px;
+    background-color: rgba(0, 200, 0, 1);
+}
+
+.key_popup {
     position: absolute;
+    top: calc(100% + 8px - 2px); /* for the arrow box height */
+    left: 50%;
+    transform: translate(-50%,0);
+    margin-right: -50%;
+    display: none;
+}
+
+.key_popup.shown {
+    display: table;
+}
+/* I *HATE* vertical layout. It's official. */
+
+.key_popup > .whyish2beingweird {
+    height: 20px;
+
     width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
+    display: table-row;
+    background-color: rgba(200, 0, 0, 1);
+}
+
+
+.key_popup > .key_reflector {
+    height: 40px;
+
+    width: 100%;
+    display: table-row;
+    background-color: rgba(0, 200, 0, 1);
+}
+
+.key_popup > button {
+    height: 20px;
+
+    width: 100%;
+    display: table-row;
+    background-color: rgba(0, 0, 200, 1);
 }

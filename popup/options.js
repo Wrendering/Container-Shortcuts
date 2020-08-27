@@ -594,16 +594,195 @@ for( const tabPane of tabPanes) {
 			}
 		});
 	}
-
 }
 
 
 //----------------------------------------------------------------------------------------------------------------------------
 /* Modal functions */
 
-let modal = document.getElementById("modal");
-modal.onclick = (e) => {
-	if(e.target == modal) {
-		document.getElementById("modal").click();
-	}
+let boxx = document.getElementById("key_div");
+let modal = document.getElementById("key_popup");
+let kout = document.getElementsByClassName("key_reflector_p")[0];
+
+boxx.onclick = (e) => {
+	modal.classList.add("shown");
+	modal.focus();
 };
+
+modal.onblur = (e) => {
+	modal.classList.remove("shown");
+};
+
+var updateKeyLabel = function(e) {
+	e.preventDefault();
+	let targ = "";
+
+	let platform = "Mac";	//TODO TODO
+
+	if(e.getModifierState("Meta")) targ += "+Command";
+	if(e.getModifierState("Control") && platform == "Mac") targ += "+MacCtrl";
+	else if(e.getModifierState("Control")) targ += "+Ctrl";
+	if(e.getModifierState("Alt")) targ += "+Alt";
+	if(e.getModifierState("Shift")) targ += "+Shift";
+
+	targ = targ.substring(1);
+	kout.innerText = targ;
+
+	console.log(targ);
+};
+
+modal.addEventListener("keydown", updateKeyLabel);
+modal.addEventListener("keyup", updateKeyLabel);
+
+// TODO: Add error msg for "too many modifiers"
+//
+
+
+//----------------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
+//
+ /*
+
+const functionKeys = new Set([
+	"F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+]);
+const validKeys = new Set([
+	"Home","End","PageUp","PageDown","Insert","Delete",
+	"0","1","2","3","4","5","6","7","8","9",
+	...Array.from(functionKeys),
+	"MediaNextTrack","MediaPlayPause","MediaPrevTrack","MediaStop",
+	"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
+	"Up","Down","Left","Right","Comma","Period","Space",
+]);
+
+
+
+trimPrefix = (string) => { return string.replace(/^(?:Digit|Numpad|Arrow)/, ""); }
+const remapKeys = {
+	",": "Comma",
+	".": "Period",
+	" ": "Space",
+};
+remapKey = (keyString) => {
+	return remapKeys.hasOwnProperty(keyString) ? return remapKeys[keyString] : keyString;
+}
+const keyOptions = [
+	e => String.fromCharCode(e.which), // A letter?
+	e => e.code.toUpperCase(), // A letter.
+	e => trimPrefix(e.code), // Digit3, ArrowUp, Numpad9.
+	e => trimPrefix(e.key), // Digit3, ArrowUp, Numpad9.
+	e => remapKey(e.key), // Comma, Period, Space.
+];
+
+function getStringForEvent(event) {
+	for (let option of keyOptions) {
+		if (validKeys.has(option(event))) return value;
+	}
+	return "";
+}
+
+
+function getShortcutForEvent(e) {
+	let modifierMap;
+	let platform = "macosx";
+
+	if (platform == "macosx") {
+		modifierMap = {
+			MacCtrl: e.ctrlKey,
+			Alt: e.altKey,
+			Command: e.metaKey,
+			Shift: e.shiftKey,
+		};
+	} else {
+		modifierMap = {
+			Ctrl: e.ctrlKey,
+			Alt: e.altKey,
+			Shift: e.shiftKey,
+		};
+	}
+
+  return Object.entries(modifierMap)
+	.filter(([key, isDown]) => isDown)
+	.map(([key]) => key)
+	.concat(getStringForEvent(e))
+	.join("+");
+}
+
+
+
+function onShortcutChange(e) {
+    let input = e.target;
+
+    if (e.key == "Escape") {
+      input.blur();
+      return;
+    }
+    if (e.key == "Tab") return;
+
+    if (!e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
+      if (e.key == "Delete" || e.key == "Backspace") {
+        // Avoid triggering back-navigation.
+        e.preventDefault();
+        assignShortcutToInput(input, "");
+        return;
+      }
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Some system actions aren't in the keyset, handle them independantly.
+    if (ShortcutUtils.getSystemActionForEvent(e)) {
+      e.defaultCancelled = true;
+      setError(input, "shortcuts-system");
+      return;
+    }
+
+    let shortcutString = getShortcutForEvent(e);
+    input.value = getShortcutValue(shortcutString);
+
+    if (e.type == "keyup" || !shortcutString.length) {
+      return;
+    }
+
+    let validation = ShortcutUtils.validate(shortcutString);
+    switch (validation) {
+      case ShortcutUtils.IS_VALID:
+        // Show an error if this is already a system shortcut.
+        let chromeWindow = window.windowRoot.ownerGlobal;
+        if (ShortcutUtils.isSystem(chromeWindow, shortcutString)) {
+          setError(input, "shortcuts-system");
+          break;
+        }
+
+        // Check if shortcut is already assigned.
+        if (shortcutKeyMap.has(shortcutString)) {
+          setError(input, "shortcuts-exists", {
+            addon: getAddonName(shortcutString),
+          });
+        } else {
+          // Update the shortcut if it isn't reserved or assigned.
+          assignShortcutToInput(input, shortcutString);
+        }
+        break;
+      case ShortcutUtils.MODIFIER_REQUIRED:
+        if (AppConstants.platform == "macosx") {
+          setError(input, "shortcuts-modifier-mac");
+        } else {
+          setError(input, "shortcuts-modifier-other");
+        }
+        break;
+      case ShortcutUtils.INVALID_COMBINATION:
+        setError(input, "shortcuts-invalid");
+        break;
+      case ShortcutUtils.INVALID_KEY:
+        setError(input, "shortcuts-letter");
+        break;
+    }
+  }
+
+
+  //*/
