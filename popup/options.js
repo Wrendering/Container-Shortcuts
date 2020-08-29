@@ -104,7 +104,7 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 		let cell_cntnr = row.insertCell(1);
 		let cell_targt = row.insertCell(2);
 
-		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + command.shortcut + "' >";
+		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + command.shortcut + "' class='shortcut_input' >";
 		cell_cntnr.innerHTML = selectHTML;
 		cell_cntnr.id = "cntnr_cell_" + commName;
 		cell_targt.innerHTML = targetHTML;
@@ -121,9 +121,19 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 			}
 		}
 
-		cell_shrct.children[0].onchange = shortcutSelectResponse;
+		//cell_shrct.children[0].onchange = shortcutSelectResponse;
 		cell_cntnr.children[0].onchange = containerSelectResponse;
 		cell_targt.children[0].onchange = targetSelectResponse;
+
+		let input = cell_shrct.children[0];
+		input.saveShortcut = (function(shortcutString) {
+			this.value = shortcutString;	// just to be sure
+			shortcutSelectResponse.call(this);
+		}).bind(input);	// this is called from shortcuts.js
+		input.addEventListener("focus", shortcuts.onShortcutFocus.bind(input) );
+		input.addEventListener("blur", shortcuts.onShortcutBlur.bind(input) );
+		input.addEventListener("keydown", shortcuts.onShortcutChange );
+		input.addEventListener("keyup", shortcuts.onShortcutChange );
 	});
 };
 
@@ -526,22 +536,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Blur seems to do slightly better than unload because it happens earlier
 // TODO Someone explain to me WHY javascript feels the NEED to BE THIS WAY
 
-//window.addEventListener("unload", async () => {
-//var unload_nonsense = false;
+
 window.addEventListener("unload", async (e) => {
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
 
 	await Promise.all([	//not like it matters I think
 	browser.storage.local.set( {["previous_selector"] : page_select.options[page_select.selectedIndex].value } ),
 	eCR.save()        ]);
-	//unload_nonsense = true;
 });
-
-/*window.addEventListener("unload", async () => {
-	if( ! unload_nonsense) {
-		console.log("browser.localstorage may be slower than the unload process.");
-	}
-});*/
 
 browser.runtime.onMessage.addListener(async (message) => {
 	if(message.substring(0, 12) == "commandQuery") {
@@ -595,152 +597,3 @@ for( const tabPane of tabPanes) {
 		});
 	}
 }
-
-
-//----------------------------------------------------------------------------------------------------------------------------
-/* Modal functions */
-
-let boxx = document.getElementById("key_div");
-let modal = document.getElementById("key_popup");
-let kout = document.getElementsByClassName("key_reflector_p")[0];
-
-boxx.onclick = (e) => {
-	modal.classList.add("shown");
-	modal.focus();
-};
-
-modal.onblur = (e) => {
-	modal.classList.remove("shown");
-};
-
-var onShortcutChange;
-modal.addEventListener("keydown", (e) => onShortcutChange(e) );
-modal.addEventListener("keyup", (e) => onShortcutChange(e) );
-
-
-//----------------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------------
-//
-
-
-// Valid keys for shortcuts
-// Note: check how/if media buttons actually work
-const functionKeys = new Set([
-	"F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
-]);
-const validKeys = new Set([
-	"Home","End","PageUp","PageDown","Insert","Delete",
-	"0","1","2","3","4","5","6","7","8","9",
-	...Array.from(functionKeys),
-	"MediaNextTrack","MediaPlayPause","MediaPrevTrack","MediaStop",
-	"A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
-	"Up","Down","Left","Right","Comma","Period","Space",
-]);
-
-// Processing a key event through to eg "Ctrl+Shift+Y", the saveable output
-// Note that this model assumes the key is the last one pressed
-
-var trimPrefix = (string) => { return string.replace(/^(?:Digit|Numpad|Arrow)/, ""); };
-
-const remapKeys = {
-	",": "Comma",
-	".": "Period",
-	" ": "Space",
-};
-var remapKey = (keyString) => {
-	return remapKeys.hasOwnProperty(keyString) ? remapKeys[keyString] : keyString;
-};
-
-const keyOptions = [
-	e => String.fromCharCode(e.which), // A letter?
-	e => e.code.toUpperCase(), // A letter.
-	e => trimPrefix(e.code), // Digit3, ArrowUp, Numpad9.
-	e => trimPrefix(e.key), // Digit3, ArrowUp, Numpad9.
-	e => remapKey(e.key), // Comma, Period, Space.
-];
-function getStringForEvent(event) {
-	for (let option of keyOptions) {
-		let value = option(event);
-		if(validKeys.has(value)) return value;
-	}
-	return "";
-};
-
-function getModifiersForEvent(e) {
-	let modifierMap;
-	let platform = "macosx";
-	// TODO: for an inexplicable reason, only the background script can request platform
-	if (platform == "macosx") {
-		modifierMap = { MacCtrl: e.ctrlKey, Alt: e.altKey, Command: e.metaKey, Shift: e.shiftKey };
-	} else {
-		modifierMap = { Ctrl: e.ctrlKey, Alt: e.altKey, Shift: e.shiftKey };
-	}
-
-	return Object.entries(modifierMap)
-		.filter(([key, isDown]) => isDown)
-		.map(([key]) => key)
-};
-
-function getShortcutForEvent(e) {
-	let modifiers = getModifiersForEvent(e);
-	let keyString = getStringForEvent(e);
-	if(keyString != "") modifiers.concat(keyString);
-	return modifiers.join("+");
-};
-
-let setError = function(str) {
-
-};
-
-// Actually attaching the function to the
-onShortcutChange = function(e) {
-	/* Check for combinations that should close the window */
-	if (e.key == "Escape") {
-		e.preventDefault();
-		modal.blur();
-		return;
-    }
-    if (e.key == "Tab") return;	// TODO necessary? or treat as empty?
-
-    if (!e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
-		if (e.key == "Delete" || e.key == "Backspace") {
-			// "Avoid triggering back-navigation."
-			e.preventDefault();
-			// TODO Add an 'enabled' flag to each command or way to delete them, etc
-			return;
-		}
-    }
-    e.preventDefault();
-    e.stopPropagation();
-
-	/* Update pane */
-
-    let shortcutString = getShortcutForEvent(e);
-    kout.innerText = shortcutString;
-	if (e.type == "keyup" || !shortcutString.length) return;
-
-	/* Check for validity and add errors */
-	// Check: 1) it's only valid keys; 2) it's of the proper format, aka a) has a modifier, b) has a key, c) only has up to two modifiers of the proper types
-
-	let modifiers = getModifiersForEvent(e)
-	if(getStringForEvent(e) == "") {
-		setError("Type a letter");
-	} else if(modifiers.length == 0 || (modifiers.length == 1 && modifiers.includes("Shift") ) ) {
-		setError("Include Ctrl, Alt or Command");	// TODO check platform
-	} else if(getModifiersForEvent(e).length >= 2) {
-		// on older/other browsers, check for less compatible combinations
-		setError("Invalid Combination");
-	} else {
-		/* Save if complete valid expression */
-
-		console.log("SAVED!: " + shortcutString);
-		kout.innerText = "";	// for next opening
-		modal.blur();
-	}
-};
-
-
-  //*/

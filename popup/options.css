@@ -82,52 +82,13 @@ div.tabbedDiv.hide {
 
 /* - - */
 
-.key_div {
-    position: relative;
-    background-color: rgba(200, 200, 0, 1);
-}
-
-.key_label {
-    width: 100px;
-    height: 20px;
-    background-color: rgba(0, 200, 0, 1);
-}
-
 .key_popup {
     position: absolute;
-    top: calc(100% + 8px - 2px); /* for the arrow box height */
-    left: 50%;
-    transform: translate(-50%,0);
+    transform: translate(-50%, 6px );
     margin-right: -50%;
     display: none;
 }
 
 .key_popup.shown {
     display: table;
-}
-/* I *HATE* vertical layout. It's official. */
-
-.key_popup > .whyish2beingweird {
-    height: 20px;
-
-    width: 100%;
-    display: table-row;
-    background-color: rgba(200, 0, 0, 1);
-}
-
-
-.key_popup > .key_reflector {
-    height: 40px;
-
-    width: 100%;
-    display: table-row;
-    background-color: rgba(0, 200, 0, 1);
-}
-
-.key_popup > button {
-    height: 20px;
-
-    width: 100%;
-    display: table-row;
-    background-color: rgba(0, 0, 200, 1);
 }
