@@ -613,29 +613,9 @@ modal.onblur = (e) => {
 	modal.classList.remove("shown");
 };
 
-var updateKeyLabel = function(e) {
-	e.preventDefault();
-	let targ = "";
-
-	let platform = "Mac";	//TODO TODO
-
-	if(e.getModifierState("Meta")) targ += "+Command";
-	if(e.getModifierState("Control") && platform == "Mac") targ += "+MacCtrl";
-	else if(e.getModifierState("Control")) targ += "+Ctrl";
-	if(e.getModifierState("Alt")) targ += "+Alt";
-	if(e.getModifierState("Shift")) targ += "+Shift";
-
-	targ = targ.substring(1);
-	kout.innerText = targ;
-
-	console.log(targ);
-};
-
-modal.addEventListener("keydown", updateKeyLabel);
-modal.addEventListener("keyup", updateKeyLabel);
-
-// TODO: Add error msg for "too many modifiers"
-//
+var onShortcutChange;
+modal.addEventListener("keydown", (e) => onShortcutChange(e) );
+modal.addEventListener("keyup", (e) => onShortcutChange(e) );
 
 
 //----------------------------------------------------------------------------------------------------------------------------
@@ -644,8 +624,10 @@ modal.addEventListener("keyup", updateKeyLabel);
 //----------------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------------------------
 //
- /*
 
+
+// Valid keys for shortcuts
+// Note: check how/if media buttons actually work
 const functionKeys = new Set([
 	"F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
 ]);
@@ -658,17 +640,20 @@ const validKeys = new Set([
 	"Up","Down","Left","Right","Comma","Period","Space",
 ]);
 
+// Processing a key event through to eg "Ctrl+Shift+Y", the saveable output
+// Note that this model assumes the key is the last one pressed
 
+var trimPrefix = (string) => { return string.replace(/^(?:Digit|Numpad|Arrow)/, ""); };
 
-trimPrefix = (string) => { return string.replace(/^(?:Digit|Numpad|Arrow)/, ""); }
 const remapKeys = {
 	",": "Comma",
 	".": "Period",
 	" ": "Space",
 };
-remapKey = (keyString) => {
-	return remapKeys.hasOwnProperty(keyString) ? return remapKeys[keyString] : keyString;
-}
+var remapKey = (keyString) => {
+	return remapKeys.hasOwnProperty(keyString) ? remapKeys[keyString] : keyString;
+};
+
 const keyOptions = [
 	e => String.fromCharCode(e.which), // A letter?
 	e => e.code.toUpperCase(), // A letter.
@@ -676,113 +661,86 @@ const keyOptions = [
 	e => trimPrefix(e.key), // Digit3, ArrowUp, Numpad9.
 	e => remapKey(e.key), // Comma, Period, Space.
 ];
-
 function getStringForEvent(event) {
 	for (let option of keyOptions) {
-		if (validKeys.has(option(event))) return value;
+		let value = option(event);
+		if(validKeys.has(value)) return value;
 	}
 	return "";
-}
+};
 
-
-function getShortcutForEvent(e) {
+function getModifiersForEvent(e) {
 	let modifierMap;
 	let platform = "macosx";
-
+	// TODO: for an inexplicable reason, only the background script can request platform
 	if (platform == "macosx") {
-		modifierMap = {
-			MacCtrl: e.ctrlKey,
-			Alt: e.altKey,
-			Command: e.metaKey,
-			Shift: e.shiftKey,
-		};
+		modifierMap = { MacCtrl: e.ctrlKey, Alt: e.altKey, Command: e.metaKey, Shift: e.shiftKey };
 	} else {
-		modifierMap = {
-			Ctrl: e.ctrlKey,
-			Alt: e.altKey,
-			Shift: e.shiftKey,
-		};
+		modifierMap = { Ctrl: e.ctrlKey, Alt: e.altKey, Shift: e.shiftKey };
 	}
 
-  return Object.entries(modifierMap)
-	.filter(([key, isDown]) => isDown)
-	.map(([key]) => key)
-	.concat(getStringForEvent(e))
-	.join("+");
-}
+	return Object.entries(modifierMap)
+		.filter(([key, isDown]) => isDown)
+		.map(([key]) => key)
+};
 
+function getShortcutForEvent(e) {
+	let modifiers = getModifiersForEvent(e);
+	let keyString = getStringForEvent(e);
+	if(keyString != "") modifiers.concat(keyString);
+	return modifiers.join("+");
+};
 
+let setError = function(str) {
 
-function onShortcutChange(e) {
-    let input = e.target;
+};
 
-    if (e.key == "Escape") {
-      input.blur();
-      return;
+// Actually attaching the function to the
+onShortcutChange = function(e) {
+	/* Check for combinations that should close the window */
+	if (e.key == "Escape") {
+		e.preventDefault();
+		modal.blur();
+		return;
     }
-    if (e.key == "Tab") return;
+    if (e.key == "Tab") return;	// TODO necessary? or treat as empty?
 
     if (!e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
-      if (e.key == "Delete" || e.key == "Backspace") {
-        // Avoid triggering back-navigation.
-        e.preventDefault();
-        assignShortcutToInput(input, "");
-        return;
-      }
+		if (e.key == "Delete" || e.key == "Backspace") {
+			// "Avoid triggering back-navigation."
+			e.preventDefault();
+			// TODO Add an 'enabled' flag to each command or way to delete them, etc
+			return;
+		}
     }
-
     e.preventDefault();
     e.stopPropagation();
 
-    // Some system actions aren't in the keyset, handle them independantly.
-    if (ShortcutUtils.getSystemActionForEvent(e)) {
-      e.defaultCancelled = true;
-      setError(input, "shortcuts-system");
-      return;
-    }
+	/* Update pane */
 
     let shortcutString = getShortcutForEvent(e);
-    input.value = getShortcutValue(shortcutString);
+    kout.innerText = shortcutString;
+	if (e.type == "keyup" || !shortcutString.length) return;
 
-    if (e.type == "keyup" || !shortcutString.length) {
-      return;
-    }
+	/* Check for validity and add errors */
+	// Check: 1) it's only valid keys; 2) it's of the proper format, aka a) has a modifier, b) has a key, c) only has up to two modifiers of the proper types
 
-    let validation = ShortcutUtils.validate(shortcutString);
-    switch (validation) {
-      case ShortcutUtils.IS_VALID:
-        // Show an error if this is already a system shortcut.
-        let chromeWindow = window.windowRoot.ownerGlobal;
-        if (ShortcutUtils.isSystem(chromeWindow, shortcutString)) {
-          setError(input, "shortcuts-system");
-          break;
-        }
+	let modifiers = getModifiersForEvent(e)
+	if(getStringForEvent(e) == "") {
+		setError("Type a letter");
+	} else if(modifiers.length == 0 || (modifiers.length == 1 && modifiers.includes("Shift") ) ) {
+		setError("Include Ctrl, Alt or Command");	// TODO check platform
+	} else if(getModifiersForEvent(e).length >= 2) {
+		// on older/other browsers, check for less compatible combinations
+		setError("Invalid Combination");
+	} else {
+		/* Save if complete valid expression */
 
-        // Check if shortcut is already assigned.
-        if (shortcutKeyMap.has(shortcutString)) {
-          setError(input, "shortcuts-exists", {
-            addon: getAddonName(shortcutString),
-          });
-        } else {
-          // Update the shortcut if it isn't reserved or assigned.
-          assignShortcutToInput(input, shortcutString);
-        }
-        break;
-      case ShortcutUtils.MODIFIER_REQUIRED:
-        if (AppConstants.platform == "macosx") {
-          setError(input, "shortcuts-modifier-mac");
-        } else {
-          setError(input, "shortcuts-modifier-other");
-        }
-        break;
-      case ShortcutUtils.INVALID_COMBINATION:
-        setError(input, "shortcuts-invalid");
-        break;
-      case ShortcutUtils.INVALID_KEY:
-        setError(input, "shortcuts-letter");
-        break;
-    }
-  }
+		console.log("SAVED!: " + shortcutString);
+		kout.innerText = "";	// for next opening
+		modal.blur();
+	}
+};
 
 
   //*/
