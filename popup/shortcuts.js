@@ -86,47 +86,48 @@ var shortcuts = (function() {
 
     	/* Check for combinations that should close the window */
     	if (e.key == "Escape") {
-    		e.preventDefault();
+    		e.preventDefault(); e.stopPropagation();
     		boxx.blur();
     		return;
         }
         if (e.key == "Tab") return;
 
-        if (!e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
-    		if (e.key == "Delete" || e.key == "Backspace") {
-    			// "Avoid triggering back-navigation."
-    			e.preventDefault();
-    			// TODO Add an 'enabled' flag to each command or way to delete them, etc
-    			return;
-    		}
-        }
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation(); // happens for both branches
+        let shortcutString = "";
 
-    	/* Update pane */
-        let shortcutString = getShortcutForEvent(e);
+        // Pressing 'del' or backspace will set an empty shortcut string
+        if( e.altKey || e.ctrlKey || e.shiftKey || e.metaKey
+    		|| (e.key != "Delete" && e.key != "Backspace")   ) {
 
-        boxx.value = shortcutString;
-    	if (e.type == "keyup" || !shortcutString.length) return;
+            shortcutString = getShortcutForEvent(e);
+            let modifiers = getModifiersForEvent(e)
 
-    	/* Check for validity and add errors */
-    	// Check: 1) it's only valid keys; 2) it's of the proper format, aka a) has a modifier, b) has a key, c) only has up to two modifiers of the proper types
+            /* Update pane */
+            boxx.value = shortcutString;
+        	if (e.type == "keyup" || !shortcutString.length) return;
 
-    	let modifiers = getModifiersForEvent(e)
-        if(modifiers.length > 2) {
-    		// on older/other browsers, check for less compatible combinations
-    		topboxSetError("Invalid Combination");
-    	} else if(getStringForEvent(e) == "") {
-    		topboxSetError("Type a letter");
-    	} else if(modifiers.length == 0 || (modifiers.length == 1 && modifiers.includes("Shift") ) ) {
-    		topboxSetError("Include Ctrl, Alt or Command");	// TODO check platform
-    	} else {
+        	/* Check for validity and add errors */
+        	// Check: 1) it's only valid keys; 2) it's of the proper format, aka a) has a modifier, b) has a key, c) only has up to two modifiers of the proper types
+
+            let errorCode = "";
+            if(modifiers.length > 2) {
+        		// on older/other browsers, check for less compatible combinations
+        		errorCode = "Invalid Combination";
+        	} else if(getStringForEvent(e) == "") {
+        		errorCode = "Type a letter";
+        	} else if(modifiers.length == 0 || (modifiers.length == 1 && modifiers.includes("Shift") ) ) {
+        		errorCode = "Include Ctrl, Alt or Command";	// TODO check platform
+        	}
+            if( errorCode != "") {
+                topboxSetError(errorCode);
+                return;
+            }
     		/* Save if complete valid expression */
+        }
 
-    		former_value = shortcutString;
-            boxx.saveShortcut(shortcutString);  // CUSTOM event that must be created on the object
-    		boxx.blur();
-    	}
+		former_value = shortcutString;
+        boxx.saveShortcut(shortcutString);  // CUSTOM event that must be created on the object
+		boxx.blur();
     };
 
     //----------------------------------------------------------------------------------------------------------------------------

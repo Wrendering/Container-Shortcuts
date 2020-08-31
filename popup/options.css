@@ -92,3 +92,10 @@ div.tabbedDiv.hide {
 .key_popup.shown {
     display: table;
 }
+
+/* - - */
+
+.up_button, .down_button {
+    display: block;
+    background: #88b7d5;
+}

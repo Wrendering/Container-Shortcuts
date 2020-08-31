@@ -20,7 +20,7 @@ var shortcutSelectResponse = async function() {
 
 	await browser.commands.update({
 		name: commName,
-		shortcut: row.cells[0].children[0].value
+		shortcut: row.cells[1].children[0].value
 	});
 };
 
@@ -49,7 +49,7 @@ var findTargetOptions = async function(callback) {
 	let table = document.getElementById("displayTable");
 	table = table.tBodies[0];
 	for(let i = 0; i < table.rows.length; ++i) {
-		callback(table.rows[i].cells[2].children[0]);
+		callback(table.rows[i].cells[3].children[0]);
 	}
 };
 
@@ -100,9 +100,12 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 		let row = newBody.insertRow(newBody.length);
 		row.id = "row_" + commName ;
 
-		let cell_shrct = row.insertCell(0);
-		let cell_cntnr = row.insertCell(1);
-		let cell_targt = row.insertCell(2);
+		let cell_ledge = row.insertCell(0);
+		let cell_shrct = row.insertCell(1);
+		let cell_cntnr = row.insertCell(2);
+		let cell_targt = row.insertCell(3);
+
+		cell_ledge.innerHTML = `<div><button class="up_button" id="up_${commName}">↑</button><button class="down_button" id="down_${commName}">↓</button><div>` ;
 
 		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + command.shortcut + "' class='shortcut_input' >";
 		cell_cntnr.innerHTML = selectHTML;
@@ -171,7 +174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 var removeSubmitResponse = async function(e) {
 	e.preventDefault();
 
-	if( Nable() ) return;
+	if( Nable() ) return;	// TODO: Rename this and eCR
 
 	//const promise_custom = browser.storage.local.get( [ "custom_pages" ] );
 	// this is really unnecessary, just cache it

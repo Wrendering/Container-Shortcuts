@@ -14,7 +14,6 @@
 			<ul class="tabList">
 			   <li class="selected" ><a href="#tab_select" >Commands</a></li>
 			   <li class="" ><a href="#tab_pages" >Custom Pages</a></li>
-			   <li class="" ><a href="#tab_shortcuts" >Key Shortcuts</a></li>
 			</ul>
 		</nav>
 
@@ -22,8 +21,10 @@
 			<table id="displayTable">
 				<thead>
 					<tr>
+						<th></th>
 						<th>Shortcut</th>
 						<th>Container</th>
+						<th>Page</th>
 					</tr>
 				</thead>
 				<tbody></tbody>
@@ -56,25 +57,6 @@
 				<span class="error" aria-live="polite" id="page_content_error"></span>
 			</div>
 
-		</div>
-
-
-		<div class="tabbedDiv hide" id="tab_shortcuts">
-			<div>
-				<p>To edit keyboard shortcuts:</p>
-				<p><ol>
-					<li>Visit <a href="about:addons">about:addons</a></li>
-					<li>Click the gear icon and select "Manage Extension Shortcuts"</li>
-					<li>Click on a shortcut to edit it</li>
-				</ol></p>
-			</div>
-			<div>
-				<p>Due to Firefox's limitations, you cannot override default commands.</p>
-			</div>
-			<div>
-				<label for="reset_shortcut_button">Click below in order to reset to the default Ctrl-# keymappings:</label>
-				<br><button type="submit" id="reset_shortcut_button">Reset Shortcuts</button>
-			</div>
 		</div>
 
 		<script src="shortcuts.js"></script>
