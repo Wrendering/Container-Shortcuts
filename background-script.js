@@ -3,17 +3,37 @@ browser.storage.local.clear();		//TODO: This almost certainly shouldn't be here 
 browser.storage.local.set({ ["custom_pages"]: ""  });
 browser.storage.local.set({ ["previous_selector"]: -1 });
 
-browser.commands.getAll().then( (commands) => {
-	commands.forEach( (command) => {
-		browser.storage.local.get(command.name + "_cookieStoreId").then((content) => {
-			browser.storage.local.set({ [command.name + "_cookieStoreId"]: "" });
-		});
-		browser.storage.local.get(command.name + "_pageHTML").then((content) => {
-			browser.storage.local.set({ [command.name + "_pageHTML"]: "" });
-		});
-	});
-});
 
+// I'm gonna be honest, I do not remember why it was done this way
+let getThenSet = function(command, suffix, value) {
+	browser.storage.local.get(command.name + suffix).then((content) => {
+		browser.storage.local.set({ [command.name + suffix]: value });
+	});
+};
+
+Promise.all( [ browser.contextualIdentities.query({}), browser.commands.getAll() ] )
+.then( (res) => {
+	let identities = res[0].values();
+	let commands = res[1];
+
+	let i = 0;
+	let ident = identities.next();
+	commands.forEach( (command) => {
+		getThenSet(command, "_pageHTML", "");
+		if( ! ident.done) {
+			getThenSet(command, "_cookieStoreId", ident.value.cookieStoreId);
+			getThenSet(command, "_position", ++i);
+			ident = identities.next();
+		} else {
+			getThenSet(command, "_cookieStoreId", "");
+			getThenSet(command, "_position", "");
+		}
+	});
+
+
+	getThenSet({ name: "com2" }, "_position", "3");
+	getThenSet({ name: "com3" }, "_position", "2");
+});
 
 
 

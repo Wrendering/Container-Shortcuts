@@ -3,6 +3,20 @@
 // for command redirection; see below
 let connection_port = browser.runtime.connect();
 
+var ctopMap = {};
+var ptocMap = {};
+
+var epPromises = browser.commands.getAll().then( (commands) => {
+	let _epPromises = [];
+	commands.forEach( (command) => {
+		_epPromises.push(browser.storage.local.get(command.name + "_position").then( (val) => {
+			let posi = parseInt(val[command.name + "_position"]);
+			ctopMap[command.name] = posi;
+			if(posi != "") ptocMap[posi] = command;
+		}) );
+	});
+	return Promise.all(_epPromises);
+});
 
 //----------------------------------------------------------------------------------------------------------------------------
 /*   Primary Select Table    */
@@ -95,6 +109,7 @@ var constructSelectHTML = async function() {
 };
 
 var constructRow = function(newBody, selectHTML, targetHTML, command) {
+
 	let commName = command.name;
 	browser.storage.local.get( [ commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
 		let row = newBody.insertRow(newBody.length);
@@ -105,7 +120,7 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 		let cell_cntnr = row.insertCell(2);
 		let cell_targt = row.insertCell(3);
 
-		cell_ledge.innerHTML = `<div><button class="up_button" id="up_${commName}">↑</button><button class="down_button" id="down_${commName}">↓</button><div>` ;
+		cell_ledge.innerHTML = `<div class="table_sidebar"><span style="display: inline-block;"><button class="up_button" id="up_${commName}">↑</button><button class="down_button" id="down_${commName}">↓</button></span>&nbsp;<span style="display: inline-block;"><button id="delet_${commName}">X</button></span></div>` ;
 
 		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + command.shortcut + "' class='shortcut_input' >";
 		cell_cntnr.innerHTML = selectHTML;
@@ -150,9 +165,9 @@ var updateCommandTable = async function() {
 		const selectHTML = vals[0];
 		const targetHTML = vals[1];
 
-		browser.commands.getAll().then( (commands) => {
-			commands.forEach( (command) => { constructRow(newBody, selectHTML, targetHTML, command); } );
-		});
+		for(let i = 1; ptocMap.hasOwnProperty(i); ++i) {
+			constructRow(newBody, selectHTML, targetHTML, ptocMap[i]);
+		}
 
 		table.parentNode.replaceChild(newBody, table);
 	});
@@ -165,7 +180,8 @@ browser.runtime.onMessage.addListener(async (message) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-	updateCommandTable();
+	await epPromises;	// ensure the tables are loaded
+	updateCommandTable();	// TODO: Analyze loading time here
 });
 
 //----------------------------------------------------------------------------------------------------------------------------
