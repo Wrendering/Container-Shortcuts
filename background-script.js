@@ -23,16 +23,14 @@ Promise.all( [ browser.contextualIdentities.query({}), browser.commands.getAll()
 		if( ! ident.done) {
 			getThenSet(command, "_cookieStoreId", ident.value.cookieStoreId);
 			getThenSet(command, "_position", ++i);
-			ident = identities.next();
+			ident = identities.next();	//TODO platform
+			browser.commands.update({ name: command.name, shortcut: "Command+" + i });
 		} else {
 			getThenSet(command, "_cookieStoreId", "");
 			getThenSet(command, "_position", "");
 		}
 	});
 
-
-	getThenSet({ name: "com2" }, "_position", "3");
-	getThenSet({ name: "com3" }, "_position", "2");
 });
 
 

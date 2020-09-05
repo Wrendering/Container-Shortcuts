@@ -3,20 +3,38 @@
 // for command redirection; see below
 let connection_port = browser.runtime.connect();
 
+
 var ctopMap = {};
 var ptocMap = {};
-
 var epPromises = browser.commands.getAll().then( (commands) => {
 	let _epPromises = [];
 	commands.forEach( (command) => {
 		_epPromises.push(browser.storage.local.get(command.name + "_position").then( (val) => {
 			let posi = parseInt(val[command.name + "_position"]);
 			ctopMap[command.name] = posi;
-			if(posi != "") ptocMap[posi] = command;
+			if( ! isNaN(posi) ) ptocMap[posi] = command;
+			else ctopMap[command.name] = "";
 		}) );
 	});
 	return Promise.all(_epPromises);
 });
+
+let commandNames = ( () => {
+	let list = [];
+	for(let i = 1; i < 11; ++i) {
+		list.push("com" + (i % 10) );
+	}
+	return list;
+})();		// So... I kept needing to get this,
+// and for some reason browser.commands.getAll() doesn't work in unload
+
+var ctopUnload = async function() {
+	let _closePromises = [];
+	commandNames.forEach( (commName) => {
+		_closePromises.push( browser.storage.local.set({ [commName + "_position"] : ctopMap[commName] }) );
+	});
+	return Promise.all(_closePromises);
+};
 
 //----------------------------------------------------------------------------------------------------------------------------
 /*   Primary Select Table    */
@@ -108,6 +126,71 @@ var constructSelectHTML = async function() {
 	return selectHTML;
 };
 
+var updownbutton = function(who, getTarget) {
+	let commName = who.id.split('_').splice(-1)[0];
+	let curr_row = who.parentNode.parentNode.parentNode.parentNode;
+	let currentPosition = ctopMap[commName];
+	let targetPosition = getTarget(curr_row, currentPosition);
+	if(targetPosition == -1) return;
+
+	let targCommand = ptocMap[targetPosition];
+	ptocMap[targetPosition] = ptocMap[currentPosition]
+	ptocMap[currentPosition] = targCommand;
+	ctopMap[commName] = targetPosition;
+	ctopMap[targCommand.name] = currentPosition;
+};
+
+var up_button_callback = function(e) {
+	updownbutton(this, (curr_row, currentPosition) => {
+		if(currentPosition == 1) return -1;
+
+		curr_row.parentNode.insertBefore(curr_row, curr_row.previousElementSibling);
+
+		let targetPosition = currentPosition - 1;
+		return targetPosition;
+	});
+};
+
+var down_button_callback = function(e) {
+	updownbutton(this, (curr_row, currentPosition) => {
+		if(currentPosition == curr_row.parentNode.children.length) return -1;
+
+		curr_row.parentNode.insertBefore(curr_row.nextElementSibling, curr_row);
+
+		let targetPosition = currentPosition + 1;
+		return targetPosition;
+	});
+};
+
+var delete_button_callback = async function(e) {
+	let row = this.parentElement.parentElement.parentElement.parentElement;
+	let rowI = row.rowIndex;
+	let commName = row.id.substring(4);
+
+	let i = ctopMap[commName] + 1;
+	let length = Object.keys(ptocMap).length;
+	for( ; i <= length ; ++i) {
+		ptocMap[i - 1] = ptocMap[i];
+		ctopMap[ptocMap[i - 1].name] = i - 1;
+	}
+	delete ptocMap[i-1];
+	ctopMap[commName] = "";
+
+	await Promise.all([
+		browser.commands.update({
+			name: commName,
+			shortcut: ""
+		}),
+		browser.storage.local.set({
+			[commName + "_position"]: "",
+			[commName + "_cookieStoreId"]: "",
+			[commName + "_pageHTML"]: ""
+		})
+	]);
+
+	row.parentElement.removeChild(row);
+};
+
 var constructRow = function(newBody, selectHTML, targetHTML, command) {
 
 	let commName = command.name;
@@ -115,33 +198,18 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 		let row = newBody.insertRow(newBody.length);
 		row.id = "row_" + commName ;
 
+
 		let cell_ledge = row.insertCell(0);
+		cell_ledge.innerHTML = `<div class="table_sidebar"><span style="display: inline-block;"><button class="up_button" id="up_${commName}">↑</button><button class="down_button" id="down_${commName}">↓</button></span>&nbsp;<span style="display: inline-block;"><button class="delete_button" id="delet_${commName}">X</button></span></div>` ;
+		cell_ledge.id = "ledge_cell_" + commName;
+		cell_ledge.querySelector(".up_button").onclick = up_button_callback;
+		cell_ledge.querySelector(".down_button").onclick = down_button_callback;
+		cell_ledge.querySelector(".delete_button").onclick = delete_button_callback;
+
+
 		let cell_shrct = row.insertCell(1);
-		let cell_cntnr = row.insertCell(2);
-		let cell_targt = row.insertCell(3);
-
-		cell_ledge.innerHTML = `<div class="table_sidebar"><span style="display: inline-block;"><button class="up_button" id="up_${commName}">↑</button><button class="down_button" id="down_${commName}">↓</button></span>&nbsp;<span style="display: inline-block;"><button id="delet_${commName}">X</button></span></div>` ;
-
 		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + command.shortcut + "' class='shortcut_input' >";
-		cell_cntnr.innerHTML = selectHTML;
-		cell_cntnr.id = "cntnr_cell_" + commName;
-		cell_targt.innerHTML = targetHTML;
-		cell_targt.id = "targt_cell_" + commName;
-
-
-		cell_cntnr.children[0].selectedIndex = indexMap[ content[commName + "_cookieStoreId"] ] ;
-
-		let cellt = cell_targt.children[0];	// god i hate <select>
-		for(let i = 0; i < cellt.options.length; ++i) {
-			if(cellt.options[i].value === content[commName + "_pageHTML"]) {
-				cellt.selectedIndex = i;
-				break;
-			}
-		}
-
-		//cell_shrct.children[0].onchange = shortcutSelectResponse;
-		cell_cntnr.children[0].onchange = containerSelectResponse;
-		cell_targt.children[0].onchange = targetSelectResponse;
+		cell_shrct.id = "chrct_cell_" + commName;
 
 		let input = cell_shrct.children[0];
 		input.saveShortcut = (function(shortcutString) {
@@ -152,8 +220,66 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 		input.addEventListener("blur", shortcuts.onShortcutBlur.bind(input) );
 		input.addEventListener("keydown", shortcuts.onShortcutChange );
 		input.addEventListener("keyup", shortcuts.onShortcutChange );
+
+
+		let cell_cntnr = row.insertCell(2);
+		cell_cntnr.innerHTML = selectHTML;
+		cell_cntnr.id = "cntnr_cell_" + commName;
+		cell_cntnr.children[0].onchange = containerSelectResponse;
+
+		cell_cntnr.children[0].selectedIndex = indexMap[ content[commName + "_cookieStoreId"] ] ;
+
+
+		let cell_targt = row.insertCell(3);
+		cell_targt.innerHTML = targetHTML;
+		cell_targt.id = "targt_cell_" + commName;
+		cell_targt.children[0].onchange = targetSelectResponse;
+
+		let cellt = cell_targt.children[0];	// god i hate <select>
+		for(let i = 0; i < cellt.options.length; ++i) {
+			if(cellt.options[i].value === content[commName + "_pageHTML"]) {
+				cellt.selectedIndex = i;
+				break;
+			}
+		}
 	});
 };
+
+var addRowButton = async function() {
+	let commandsAll = await browser.commands.getAll();
+
+	let body = this.parentElement.parentElement.parentElement.parentElement.tBodies[0];
+
+	let commName = (() => {
+		for(let i = 0; i < commandNames.length; ++i) {
+			if(ctopMap[commandNames[i]] == "") return commandNames[i];
+		}
+		return "error";
+	})();
+	if(commName == "error") {
+		console.log("Error: Max number of commands reached!");
+		// TODO TODO: Raise a lil popup error
+		// Also TODO: gray-out the button when it's full
+		return;
+	}
+
+	commandsAll = await commandsAll;
+	let command = commandsAll.filter( (el) => {
+		return el.name == commName;
+	} )[0];
+
+	let position = Object.keys(ptocMap).length + 1;
+	ptocMap[position] = command;
+	ctopMap[commName] = position;
+
+	await browser.storage.local.set({
+		[commName + "_position"]: position.toString()
+		// other two plus shortcut should be clear already
+	});
+
+	constructRow(body, await constructSelectHTML(), await constructTargetHTML(), command);
+};
+document.getElementById("add_row").onclick = addRowButton;
 
 var updateCommandTable = async function() {
 
@@ -183,6 +309,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 	await epPromises;	// ensure the tables are loaded
 	updateCommandTable();	// TODO: Analyze loading time here
 });
+
+//----------------------------------------------------------------------------------------------------------------------------
+/* Add/delete rows */
+
+
+
 
 //----------------------------------------------------------------------------------------------------------------------------
 /*   Add/Remove Page Tab    */
@@ -559,9 +691,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener("unload", async (e) => {
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
 
+	await ctopUnload();
+
 	await Promise.all([	//not like it matters I think
-	browser.storage.local.set( {["previous_selector"] : page_select.options[page_select.selectedIndex].value } ),
-	eCR.save()        ]);
+		browser.storage.local.set( {["previous_selector"] : page_select.options[page_select.selectedIndex].value } ),
+		eCR.save()
+    ]);
 });
 
 browser.runtime.onMessage.addListener(async (message) => {

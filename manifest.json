@@ -31,43 +31,33 @@
 
 	"commands": {
 		"com1": {
-			"suggested_key": { "default": "Ctrl+1", "mac": "Command+1" },
 			"description": "Open the 'first' container"
 		},
 		"com2": {
-			"suggested_key": { "default": "Ctrl+2", "mac": "Command+2" },
 			"description": "Open the 'second' container"
 		},
 		"com3": {
-			"suggested_key": { "default": "Ctrl+3", "mac": "Command+3" },
 			"description": "Open the 'third' container"
 		},
 		"com4": {
-			"suggested_key": { "default": "Ctrl+4", "mac": "Command+4" },
 			"description": "Open the 'fourth' container"
 		},
 		"com5": {
-			"suggested_key": { "default": "Ctrl+5", "mac": "Command+5" },
 			"description": "Open the 'fifth' container"
 		},
 		"com6": {
-			"suggested_key": { "default": "Ctrl+6", "mac": "Command+6" },
 			"description": "Open the 'sixth' container"
 		},
 		"com7": {
-			"suggested_key": { "default": "Ctrl+7", "mac": "Command+7" },
 			"description": "Open the 'seventh' container"
 		},
 		"com8": {
-			"suggested_key": { "default": "Ctrl+8", "mac": "Command+8" },
 			"description": "Open the 'eighth' container"
 		},
 		"com9": {
-			"suggested_key": { "default": "Ctrl+9", "mac": "Command+9" },
 			"description": "Open the 'ninth' container"
 		},
 		"com0": {
-			"suggested_key": { "default": "Ctrl+0", "mac": "Command+0" },
 			"description": "Open the 'tenth' container"
 		}
 	}
