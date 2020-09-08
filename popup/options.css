@@ -51,13 +51,12 @@ div.tabbedDiv.hide {
     --arrow_box-border: #c2e1f5;
 }
 
-.arrow_box {
+.top_arrow_box, .bottom_arrow_box {
 	position: relative;
 	background: var(--arrow_box-background);
 	border: 1px solid var(--arrow_box-border);
 }
-.arrow_box:after, .arrow_box:before {
-	bottom: 100%;
+.top_arrow_box:after, .top_arrow_box:before, .bottom_arrow_box:after, .bottom_arrow_box:before {
 	left: 50%;
 	border: solid transparent;
 	content: " ";
@@ -67,31 +66,54 @@ div.tabbedDiv.hide {
 	pointer-events: none;
 }
 
-.arrow_box:after {
+.top_arrow_box:after, .bottom_arrow_box:after {
 	border-color: rgba( #var(--arrow_box-background), 0);
-	border-bottom-color: var(--arrow_box-background);
 	border-width: 8px;
 	margin-left: -8px;
 }
-.arrow_box:before {
+.top_arrow_box:before, .bottom_arrow_box:before {
 	border-color: rgba( #var(--arrow_box-border), 0);
-	border-bottom-color: var(--arrow_box-border);
 	border-width: 9px;
 	margin-left: -9px;
 }
 
+.top_arrow_box:after {
+    bottom: 100%;
+    border-bottom-color: var(--arrow_box-background);
+}
+
+.top_arrow_box:before {
+    bottom: 100%;
+    border-bottom-color: var(--arrow_box-border);
+}
+
+.bottom_arrow_box:after {
+    top: 100%;
+    border-top-color: var(--arrow_box-background);
+}
+
+.bottom_arrow_box:before {
+    top: 100%;
+    border-top-color: var(--arrow_box-border);
+}
+
 /* - - */
 
-.key_popup {
+.key_popup, .err_popup {
     position: absolute;
     transform: translate(-50%, 6px );
     margin-right: -50%;
     display: none;
 }
 
-.key_popup.shown {
-    display: table;
+.err_popup {
+    bottom: 10%;    /* TODO CHANGE somehow :( */
 }
+
+.key_popup.shown, .err_popup.shown {
+    display: block;
+}
+
 
 /* - - */
 

@@ -1,3 +1,5 @@
+"use strict"
+
 browser.storage.local.clear();		//TODO: This almost certainly shouldn't be here so I preserve data
 
 browser.storage.local.set({ ["custom_pages"]: ""  });

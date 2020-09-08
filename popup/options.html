@@ -8,7 +8,7 @@
 
 	<body>
 
-		<div id="key_popup" class="arrow_box key_popup"></div>
+		<div id="key_popup" class="top_arrow_box key_popup"></div>
 
 		<nav>
 			<ul class="tabList">
@@ -31,7 +31,13 @@
 				<tbody></tbody>
 				<tfoot>
 					<tr>
-						<th align="center" colspan="4"><button id="add_row">+ Add New Shortcut +</button></th>
+						<th align="center" colspan="4">
+							<button id="add_row">+ Add New Shortcut +</button>
+
+							<div id="shortcut_add_error" class="bottom_arrow_box err_popup">
+								Max number of commands reached!
+							</div>
+						</th>
 					</tr>
 				</tfoot>
 			</table>

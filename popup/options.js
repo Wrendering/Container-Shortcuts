@@ -245,6 +245,13 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 	});
 };
 
+var shrtAddErr = document.getElementById("shortcut_add_error");
+var shrtAddRowButton = document.getElementById("add_row");
+
+shrtAddRowButton.onmouseout = function(e) {
+	if( shrtAddErr.classList.contains("shown")) shrtAddErr.classList.remove("shown");
+};
+
 var addRowButton = async function() {
 	let commandsAll = await browser.commands.getAll();
 
@@ -257,8 +264,10 @@ var addRowButton = async function() {
 		return "error";
 	})();
 	if(commName == "error") {
-		console.log("Error: Max number of commands reached!");
-		// TODO TODO: Raise a lil popup error
+		let inputBB = shrtAddRowButton.getBoundingClientRect();
+		shrtAddErr.style.left = `${ inputBB.left + inputBB.width / 2 }px`;
+		if( ! shrtAddErr.classList.contains("shown")) shrtAddErr.classList.add("shown");
+
 		// Also TODO: gray-out the button when it's full
 		return;
 	}
@@ -279,7 +288,7 @@ var addRowButton = async function() {
 
 	constructRow(body, await constructSelectHTML(), await constructTargetHTML(), command);
 };
-document.getElementById("add_row").onclick = addRowButton;
+shrtAddRowButton.onclick = addRowButton;
 
 var updateCommandTable = async function() {
 
