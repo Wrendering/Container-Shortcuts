@@ -1,7 +1,15 @@
 "use strict"
 
 // for command redirection; see below
+
 let connection_port = browser.runtime.connect();
+var currentPlatform = new Promise((resolve, reject) => {
+	connection_port.onMessage.addListener(function(m) {
+		if(m.hasOwnProperty("platform")) {
+			resolve(m.platform);
+		}
+	});
+});
 
 
 var ctopMap = {};
@@ -189,6 +197,7 @@ var delete_button_callback = async function(e) {
 	]);
 
 	row.parentElement.removeChild(row);
+	if( shrtAddRowButton.classList.contains("greyed")) shrtAddRowButton.classList.remove("greyed");
 };
 
 var constructRow = function(newBody, selectHTML, targetHTML, command) {
@@ -197,7 +206,7 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 	browser.storage.local.get( [ commName + "_cookieStoreId", commName + "_pageHTML" ]).then((content) => {
 		let row = newBody.insertRow(newBody.length);
 		row.id = "row_" + commName ;
-
+		// TODO Literally most of this should be done using html templates instead
 
 		let cell_ledge = row.insertCell(0);
 		cell_ledge.innerHTML = `<div class="table_sidebar"><span style="display: inline-block;"><button class="up_button" id="up_${commName}">↑</button><button class="down_button" id="down_${commName}">↓</button></span>&nbsp;<span style="display: inline-block;"><button class="delete_button" id="delet_${commName}">X</button></span></div>` ;
@@ -257,18 +266,28 @@ var addRowButton = async function() {
 
 	let body = this.parentElement.parentElement.parentElement.parentElement.tBodies[0];
 
+	let extraspace = false;
 	let commName = (() => {
+		let firstResponder = "error";
 		for(let i = 0; i < commandNames.length; ++i) {
-			if(ctopMap[commandNames[i]] == "") return commandNames[i];
+			if(ctopMap[commandNames[i]] == "") {
+				if(firstResponder == "error") {
+					firstResponder = commandNames[i];
+				} else {
+					extraspace = true;
+					return firstResponder;
+				}
+			}
 		}
-		return "error";
+		return firstResponder;
 	})();
+	if(! extraspace) {
+		if( ! shrtAddRowButton.classList.contains("greyed")) shrtAddRowButton.classList.add("greyed");
+	}
 	if(commName == "error") {
 		let inputBB = shrtAddRowButton.getBoundingClientRect();
 		shrtAddErr.style.left = `${ inputBB.left + inputBB.width / 2 }px`;
 		if( ! shrtAddErr.classList.contains("shown")) shrtAddErr.classList.add("shown");
-
-		// Also TODO: gray-out the button when it's full
 		return;
 	}
 
@@ -316,6 +335,7 @@ browser.runtime.onMessage.addListener(async (message) => {
 
 document.addEventListener('DOMContentLoaded', async () => {
 	await epPromises;	// ensure the tables are loaded
+	currentPlatform = await currentPlatform;
 	updateCommandTable();	// TODO: Analyze loading time here
 });
 
@@ -435,6 +455,7 @@ document.getElementById("add_button").addEventListener("click", (e) => { addSubm
 
 var cloneSubmitResponse = async function(e) {
 	// TODO: rename eCR content and page.content, that's just an accident waiting to happen
+	if( ! eCR.turnt ) return;
 	addSubmitResponse(e, "copy of " + eCR.page.title, eCR.page.content);
 };
 document.getElementById("clone_button").addEventListener("click", cloneSubmitResponse);
@@ -504,10 +525,14 @@ var DefaultTextContainer = function( id, propName, errorElementId ) {
 
 	page_select.addEventListener("my_enable",  (() => {
 		this.relevantElement.removeAttribute('disabled');
+		document.getElementById("clone_button").classList.remove("greyed");
+		document.getElementById("remove_button").classList.remove("greyed");
 	}).bind(child) );
 	page_select.addEventListener("my_disable", (() => {
 		this.relevantElement.disabled = true;
 		this.relevantElement.value = "";
+		document.getElementById("clone_button").classList.add("greyed");
+		document.getElementById("remove_button").classList.add("greyed");
 	}).bind(child) );
 
 	// Anything that can modify the content needs a listener below
@@ -681,10 +706,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 			if(page_select.options[i].value == prev_sel.toString()) break;
 		}
 		if(i < page_select.length) page_select.selectedIndex = i;
-	}	// Note: ALL of the above could almost certainly be done better
+		// Note: ALL of the above could almost certainly be done better
 		//  by a CSS selector or however those things work. Actually, TODO
-
-	// TODO TODO: Disable (potentially make not exist) buttons if select isn't selecting anything
+	} else {
+		document.getElementById("clone_button").classList.add("greyed");
+		document.getElementById("remove_button").classList.add("greyed");
+	}
 
 	await eCR.load();
 	eCR.update();
@@ -700,12 +727,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener("unload", async (e) => {
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
 
-	await ctopUnload();
-
-	await Promise.all([	//not like it matters I think
-		browser.storage.local.set( {["previous_selector"] : page_select.options[page_select.selectedIndex].value } ),
-		eCR.save()
-    ]);
+	//Promise.all([ ]); TODO why is this broken
+	// No await or anything cause I think the browser has limited time to process post-window close?
+	ctopUnload();
+	browser.storage.local.set( {["previous_selector"] : page_select.options[page_select.selectedIndex].value } );
+	eCR.save();
 });
 
 browser.runtime.onMessage.addListener(async (message) => {

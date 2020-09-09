@@ -49,9 +49,10 @@ var shortcuts = (function() {
 
     function getModifiersForEvent(e) {
     	let modifierMap;
-    	let platform = "macosx";
-    	// TODO: for an inexplicable reason, only the background script can request platform
-    	if (platform == "macosx") {
+        // NOTE: 'currentPlatform' is gotten in options.js from background
+    	let platform = currentPlatform;
+        console.log(currentPlatform);
+    	if (platform == "mac") {
     		modifierMap = { MacCtrl: e.ctrlKey, Alt: e.altKey, Command: e.metaKey, Shift: e.shiftKey };
     	} else {
     		modifierMap = { Ctrl: e.ctrlKey, Alt: e.altKey, Shift: e.shiftKey };
@@ -117,7 +118,12 @@ var shortcuts = (function() {
         	} else if(getStringForEvent(e) == "") {
         		errorCode = "Type a letter";
         	} else if(modifiers.length == 0 || (modifiers.length == 1 && modifiers.includes("Shift") ) ) {
-        		errorCode = "Include Ctrl, Alt or Command";	// TODO check platform
+                let platform = currentPlatform;    // See above Note
+                if(currentPlatform == "mac") {  // TODO little images of the keys?
+                    errorCode = "Include Ctrl, Alt or Command";
+                } else {
+                    errorCode = "Include Ctrl or Alt";
+                }
         	}
             if( errorCode != "") {
                 topboxSetError(errorCode);

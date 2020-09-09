@@ -106,12 +106,22 @@ div.tabbedDiv.hide {
     display: none;
 }
 
+.key_popup.shown, .err_popup.shown {
+    display: block;
+}
+
+/* - - */
+
 .err_popup {
     bottom: 10%;    /* TODO CHANGE somehow :( */
 }
 
-.key_popup.shown, .err_popup.shown {
-    display: block;
+.greyable_button {
+    background-color: #d3d3d3;
+}
+
+.greyable_button.greyed {
+    background-color: #a9a9a9;
 }
 
 

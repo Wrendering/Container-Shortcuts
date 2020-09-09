@@ -1,5 +1,10 @@
 "use strict"
 
+var currentPlatform = "";
+browser.runtime.getPlatformInfo().then( (val) => {
+	currentPlatform = val.os;
+});
+
 browser.storage.local.clear();		//TODO: This almost certainly shouldn't be here so I preserve data
 
 browser.storage.local.set({ ["custom_pages"]: ""  });
@@ -25,17 +30,16 @@ Promise.all( [ browser.contextualIdentities.query({}), browser.commands.getAll()
 		if( ! ident.done) {
 			getThenSet(command, "_cookieStoreId", ident.value.cookieStoreId);
 			getThenSet(command, "_position", ++i);
-			ident = identities.next();	//TODO platform
-			browser.commands.update({ name: command.name, shortcut: "Command+" + i });
+			ident = identities.next();
+			browser.commands.update({ name: command.name, shortcut: currentPlatform == "mac" ? "Command+" + i : "Ctrl+" + i });
 		} else {
 			getThenSet(command, "_cookieStoreId", "");
 			getThenSet(command, "_position", "");
+			browser.commands.update({ name: command.name, shortcut: "" });
 		}
 	});
 
 });
-
-
 
 
 var currentlyOpen = false;	// is there a more elegant way to do this?
@@ -46,13 +50,15 @@ browser.runtime.onMessage.addListener(async (message) => {
 });
 
 browser.runtime.onConnect.addListener( (port) => {
-  port.onDisconnect.addListener( () => {
-    currentlyOpen = false;
-    // Do stuff that should happen when popup window closes here
-	// TODO: Is saving anything at this point possible, instead of popup's unload
-  })
+	port.onDisconnect.addListener( () => {
+	    currentlyOpen = false;
+		// formerTODO: Is saving anything at this point possible, instead of popup's unload
+		// We're just going to abandon ^. not worth it, some dead promises is fine
+	});
 
-  currentlyOpen = true;
+	port.postMessage({ platform: currentPlatform });
+
+	currentlyOpen = true;
 })
 
 var currentCommand = null; // for the interim b/t telling popup to update and calling
@@ -73,7 +79,7 @@ var commandHandle = function(commName) {
 		let cookieStoreId = content[commName + "_cookieStoreId"];
 
 		// for some reason, about:newtab is too privileged and you need "" instead.
-		tab_specs = {};
+		let tab_specs = {};
 		tab_specs.cookieStoreId = cookieStoreId;
 		if( ! ( page_html === "" || page_html === (-1).toString() )) {
 			if(page_html === (-2).toString() ) {
