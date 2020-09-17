@@ -58,9 +58,12 @@ var shortcutSelectResponse = async function() {
 	let rowI = row.rowIndex;
 	let commName = row.id.substring(4);
 
+	let shrt = row.cells[1].children[0].value;
+	//if(shrt == "") shrt = null;	// BEACON 2
+
 	await browser.commands.update({
 		name: commName,
-		shortcut: row.cells[1].children[0].value
+		shortcut: shrt
 	});
 };
 
@@ -184,10 +187,11 @@ var delete_button_callback = async function(e) {
 	delete ptocMap[i-1];
 	ctopMap[commName] = "";
 
+	console.log(commName);
 	await Promise.all([
 		browser.commands.update({
 			name: commName,
-			shortcut: ""
+			shortcut: "" //null	// BEACON 3
 		}),
 		browser.storage.local.set({
 			[commName + "_position"]: "",
@@ -195,6 +199,8 @@ var delete_button_callback = async function(e) {
 			[commName + "_pageHTML"]: ""
 		})
 	]);
+
+	await browser.commands.getAll().then( console.log );
 
 	row.parentElement.removeChild(row);
 	if( shrtAddRowButton.classList.contains("greyed")) shrtAddRowButton.classList.remove("greyed");
@@ -217,8 +223,8 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 
 
 		let cell_shrct = row.insertCell(1);
-		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + command.shortcut + "' class='shortcut_input' >";
-		cell_shrct.id = "chrct_cell_" + commName;
+		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + (command.shortcut == null ? "" : command.shortcut) + "' class='shortcut_input' >";
+		cell_shrct.id = "chrct_cell_" + commName;	// BEACON 1
 
 		let input = cell_shrct.children[0];
 		input.saveShortcut = (function(shortcutString) {
@@ -331,12 +337,6 @@ browser.runtime.onMessage.addListener(async (message) => {
 	if(message === "onRemoved") {
 		updateCommandTable();
 	}
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-	await epPromises;	// ensure the tables are loaded
-	currentPlatform = await currentPlatform;
-	updateCommandTable();	// TODO: Analyze loading time here
 });
 
 //----------------------------------------------------------------------------------------------------------------------------
@@ -691,15 +691,24 @@ page_select.addEventListener("change", () => {
 	// eCR.save();
 });
 
+var finishedLoading = false;
+
 document.addEventListener('DOMContentLoaded', async () => {
+
+	let cmd_promise = (async () => {
+		await epPromises;	// ensure the tables are loaded
+		currentPlatform = await currentPlatform;
+		updateCommandTable();	// TODO: Analyze loading time here
+	})();
+
 	// should i maybe do OO stuff and make a page_select object to handle the 'selectedness'?
 	//   Is there a built-in for this? Also, keep previous selected one
 	let prev_sel = browser.storage.local.get( ["previous_selector"] ).then( (val) => {
 		return val["previous_selector"];
 	});
+	await eCR.load();	// TODO apparently constructEmptyTargetInnerHTML doesnt use eCR
 	page_select.innerHTML = await constructEmptyTargetInnerHTML("<option value='-1' id='ps_empty' >&#9472;</option>");
 	prev_sel = (await prev_sel);
-
 	if(prev_sel != -1) {
 		let i = 0;
 		for(; i < page_select.length; ++i) {
@@ -712,11 +721,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 		document.getElementById("clone_button").classList.add("greyed");
 		document.getElementById("remove_button").classList.add("greyed");
 	}
-
-	await eCR.load();
 	eCR.update();
 
 	potentialEvent();
+
+	await cmd_promise;
+	finishedLoading = true;
 });
 
 
@@ -725,6 +735,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 window.addEventListener("unload", async (e) => {
+	if( ! finishedLoading) return;
+
 	if(eCR.turnt) page_select.dispatchEvent(my_beforechangeEvent);
 
 	//Promise.all([ ]); TODO why is this broken
