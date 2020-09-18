@@ -59,7 +59,7 @@ var shortcutSelectResponse = async function() {
 	let commName = row.id.substring(4);
 
 	let shrt = row.cells[1].children[0].value;
-	//if(shrt == "") shrt = null;	// BEACON 2
+	//if(shrt == "") shrt = null;
 
 	await browser.commands.update({
 		name: commName,
@@ -187,11 +187,10 @@ var delete_button_callback = async function(e) {
 	delete ptocMap[i-1];
 	ctopMap[commName] = "";
 
-	console.log(commName);
 	await Promise.all([
 		browser.commands.update({
 			name: commName,
-			shortcut: "" //null	// BEACON 3
+			shortcut: "" //null
 		}),
 		browser.storage.local.set({
 			[commName + "_position"]: "",
@@ -199,8 +198,6 @@ var delete_button_callback = async function(e) {
 			[commName + "_pageHTML"]: ""
 		})
 	]);
-
-	await browser.commands.getAll().then( console.log );
 
 	row.parentElement.removeChild(row);
 	if( shrtAddRowButton.classList.contains("greyed")) shrtAddRowButton.classList.remove("greyed");
@@ -224,7 +221,7 @@ var constructRow = function(newBody, selectHTML, targetHTML, command) {
 
 		let cell_shrct = row.insertCell(1);
 		cell_shrct.innerHTML = "<input type='text' id='" + ("shrct_cell_" + commName) + "' value='" + (command.shortcut == null ? "" : command.shortcut) + "' class='shortcut_input' >";
-		cell_shrct.id = "chrct_cell_" + commName;	// BEACON 1
+		cell_shrct.id = "chrct_cell_" + commName;
 
 		let input = cell_shrct.children[0];
 		input.saveShortcut = (function(shortcutString) {
@@ -554,6 +551,7 @@ var DefaultTextContainer = function( id, propName, errorElementId ) {
 
 	page_select.addEventListener("my_beforechange", (() => { this.storeContentResponse(); }).bind(child) );
 	page_select.addEventListener("my_afterchange", (() => { this.loadContentResponse(); }).bind(child) );
+	page_select.addEventListener("my_commandQuery", (() => { this.storeContentResponse(); }).bind(child) );
 	// any others? probably tab change
 
 
@@ -749,8 +747,9 @@ window.addEventListener("unload", async (e) => {
 browser.runtime.onMessage.addListener(async (message) => {
 	if(message.substring(0, 12) == "commandQuery") {
 
+		// TODO Okay this is particularly and notably bad as far as maintainability
 		// Check if the command in question is the one currently being edited
-		if(document.getElementById("row_" + message.substring(12)).cells[2].children[0].value == page_select.value) {
+		if(document.getElementById("row_" + message.substring(12)).cells[3].children[0].value == page_select.value) {
 			// HANDLE ALL the relevant things that may need saving
 			// could probably check only if currently selected, either by saving or checking selected status, but eh
 			// TODO: Either make async, or test to show self this is pointless optimization

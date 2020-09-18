@@ -35,7 +35,7 @@ Promise.all( [ browser.contextualIdentities.query({}), browser.commands.getAll()
 		} else {
 			getThenSet(command, "_cookieStoreId", "");
 			getThenSet(command, "_position", "");
-			browser.commands.update({ name: command.name, shortcut: "" });	// BEACON 4?
+			browser.commands.update({ name: command.name, shortcut: "" });
 		}
 	});
 
